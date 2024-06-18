@@ -1,50 +1,50 @@
-
 {
-  "name": "hello-world",
-  "label": "Hello World: My First Gear",
-  "description": "My very first gear, developed along with the flywheel gear building tutorial.",
-  "version": "0.1.0",
-  "author": "Flywheel User",
-  "maintainer": "Flywheel <support@flywheel.io>",
-  "cite": "",
-  "license": "Apache-2.0",
-  "url": "",
-  "source": "",
+  "name": "<computer-friendly-name>",
+  "label": "<human-friendly-name>",
+  "description": "<A brief description of the gear.>",
+  "version": "<major.minor.patch>",
+  "author": "<author-name>",
+  "maintainer": "<maintainer-name-and-contact>",
+  "cite": "<doi-or-other-citation>",
+  "license": "<license>",
+  "url": "<link-to-gear-repo>",
+  "source": "<link-to-documentation-about-algorithm>",
   "environment": {
-    "FLYWHEEL": "/flywheel/v0"
+    "FLYWHEEL": "/flywheel/v0",
+    "MYENV": "<custom-environmental-variable>"
   },
   "custom": {
     "gear-builder": {
-      "category": "analysis",
-      "image": ""
+      "category": "<analysis|converter|utility|classifier|qa>",
+      "image": "<docker/image:version>"
     },
     "flywheel": {
-      "suite": "Flywheel Training Gears"
+      "suite": "<gear-category-in-flywheel>"
     }
   },
   "inputs": {
-    "message_file": {
-      "description": "the custom message we'll print after our Hello statements",
+    "<input-label>": {
+      "description": "<human-friendly-custom-description-of-input>",
       "base": "file",
       "type": {
         "enum": [
-          "text"
+          "<file-type>"
         ]
       }
     }
   },
   "config": {
-    "my_name": {
-      "description": "Your name, for the program to say 'hello' to",
+    "<config-label>": {
+      "description": "<human-friendly-custom-description-of-config>",
       "type": "string"
     },
-    "num_rep": {
-    "description": "The number of times to say 'hello'",
-      "default": 1,
-      "minimum": 0,
-      "maximum": 10,
+    "<config-label>": {
+      "description": "<human-friendly-custom-description-of-config>",
+      "default": "<default-value>",
+      "minimum": "<minimum-value>",
+      "maximum": "<maximum-value>",
       "type": "integer"
     }
   },
-  "command": "python run.py"
+  "command": "<bash-shell-command-to-run-script>"
 }
