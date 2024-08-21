@@ -1,0 +1,10 @@
+# makefile flag files
+.docker
+.gear
+.gear-run.txt
+# created for 'fw-beta gear run'
+input/
+config.json*
+# created by 'fw-beta gear run'
+run.sh
+.input_map.json

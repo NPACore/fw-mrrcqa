@@ -2,7 +2,7 @@ FROM alpine:latest
 RUN apk add --update \
     python3 \
     py-pip \
-  && pip install flywheel-sdk \
+  && pip install nibabel flywheel-sdk --break-system-packages \
   && rm -rf /var/cache/apk/*
   
 ENV FLYWHEEL=/flywheel/v0

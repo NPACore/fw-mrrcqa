@@ -1,50 +1,45 @@
 {
-  "name": "<computer-friendly-name>",
-  "label": "<human-friendly-name>",
-  "description": "<A brief description of the gear.>",
-  "version": "<major.minor.patch>",
-  "author": "<author-name>",
-  "maintainer": "<maintainer-name-and-contact>",
-  "cite": "<doi-or-other-citation>",
-  "license": "<license>",
-  "url": "<link-to-gear-repo>",
-  "source": "<link-to-documentation-about-algorithm>",
+  "name": "mrrcqa",
+  "label": "MRRC QA",
+  "description": "Run MRRC Quality Assurance on morning phantoms",
+  "version": "1.0.20240819",
+  "author": "Chan Moon",
+  "maintainer": "Will Foran <foranw@upmc.edu>",
+  "license": "GPL-3.0",
+  "url": "https://github.com/NPACore/flywheel",
+  "source": "https://github.com/NPACore/flywheel",
   "environment": {
     "FLYWHEEL": "/flywheel/v0",
-    "MYENV": "<custom-environmental-variable>"
+    "SHLVL": "1",
+    "container": "podman",
+    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "PWD": "/"
   },
   "custom": {
     "gear-builder": {
-      "category": "<analysis|converter|utility|classifier|qa>",
-      "image": "<docker/image:version>"
+      "category": "qa",
+      "image": "npac/mrrcqa:1.0.20240819"
     },
     "flywheel": {
-      "suite": "<gear-category-in-flywheel>"
+      "suite": "utility"
     }
   },
   "inputs": {
-    "<input-label>": {
-      "description": "<human-friendly-custom-description-of-input>",
+    "phantom_nifti": {
+      "description": "phantom nifti file",
       "base": "file",
       "type": {
         "enum": [
-          "<file-type>"
+          "nifti"
         ]
       }
     }
   },
   "config": {
-    "<config-label>": {
-      "description": "<human-friendly-custom-description-of-config>",
+    "note_example": {
+      "description": "Note to add to output. For later use",
       "type": "string"
-    },
-    "<config-label>": {
-      "description": "<human-friendly-custom-description-of-config>",
-      "default": "<default-value>",
-      "minimum": "<minimum-value>",
-      "maximum": "<maximum-value>",
-      "type": "integer"
     }
   },
-  "command": "<bash-shell-command-to-run-script>"
+  "command": "/flywheel/v0/run.py"
 }
