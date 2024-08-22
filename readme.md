@@ -7,7 +7,7 @@ jq .snrpk < outputs/stats.json # 242.8687622000182
 ls outputs/bars.png
 ```
 
-![](outputs/bars.png)
+![](output/bars.png)
 
 ## TODO
 
