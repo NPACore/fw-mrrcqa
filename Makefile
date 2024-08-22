@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: all test
 all: .gear-run.txt
 .docker: Dockerfile run.py
 	docker build -t npac/$(shell jq -r .name manifest.json):$(shell jq -r .version manifest.json)  ./ 
@@ -22,3 +22,7 @@ input/phantom_nifti:
 
 install: .gear-run.txt
 	fw-beta gear upload
+
+
+test:
+	cd Program/ && octave --eval "test readshimvalues"
