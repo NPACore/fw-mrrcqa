@@ -1,7 +1,9 @@
 .PHONY: all test
+DOCKER_NAME := npac/$(shell jq -r .name manifest.json):$(shell jq -r .version manifest.json)
+
 all: .gear-run.txt
-.docker: Dockerfile run.py
-	docker build -t npac/$(shell jq -r .name manifest.json):$(shell jq -r .version manifest.json)  ./ 
+.docker: Dockerfile $(wildcard Program/*) manifest.json
+	docker build -t $(DOCKER_NAME) ./ 
 	date > $@
 
 .gear: .docker
@@ -23,8 +25,11 @@ input/phantom_nifti:
 install: .gear-run.txt
 	fw-beta gear upload
 
-example/QA_PRISMA3QA_20240809_180204_160000:
+example/QA_PRISMA3QA_20240809_180204_160000/:
 	cd example && unzip QA_PRISMA3QA_20240809_180204_160000.zip
 
-test: example/QA_PRISMA3QA_20240809_180204_160000 
-	cd Program/ && octave --eval "test readshimvalues"
+test: Program/readshimvalues.m example/QA_PRISMA3QA_20240809_180204_160000/
+	cd Program/ && octave --eval "test readshimvalues" #|& tee ../$@
+
+test-docker: .docker
+	docker run -v $(PWD)/example:/flywheel/example:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"

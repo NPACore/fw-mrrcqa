@@ -2,9 +2,11 @@
 .docker
 .gear
 .gear-run.txt
+.*m
 # created for 'fw-beta gear run'
 input/
 config.json*
 # created by 'fw-beta gear run'
 run.sh
 .input_map.json
+example/QA_PRISMA3QA_20240809_180204_160000*

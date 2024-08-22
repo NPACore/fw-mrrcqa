@@ -1,12 +1,16 @@
-FROM alpine:latest
-RUN apk add --update \
-    python3 \
-    py-pip \
+FROM debian:bookworm-slim
+RUN apt update -y \
+  && apt-get -y install octave \
+               octave-dicom \
+               python3 python3-pip \
   && pip install nibabel flywheel-sdk --break-system-packages \
-  && rm -rf /var/cache/apk/*
+  && apt-get autoremove -y \
+  && apt-get clean -y \
+  && apt-get autoclean -y \
+  && rm -rf /var/lib/apt/lists/
   
 ENV FLYWHEEL=/flywheel/v0
 RUN mkdir -p ${FLYWHEEL}
-COPY run.py ${FLYWHEEL}/run.py
+COPY Program/ ${FLYWHEEL}/
 
-ENTRYPOINT ["python3 run.py"]
+ENTRYPOINT ["${FLYWHEEL}/QC.m"]

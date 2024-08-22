@@ -2,7 +2,7 @@
   "name": "mrrcqa",
   "label": "MRRC QA",
   "description": "Run MRRC Quality Assurance on morning phantoms",
-  "version": "1.0.20240819",
+  "version": "1.0.20240822",
   "author": "Chan Moon",
   "maintainer": "Will Foran <foranw@upmc.edu>",
   "license": "GPL-3.0",
@@ -18,7 +18,7 @@
   "custom": {
     "gear-builder": {
       "category": "qa",
-      "image": "npac/mrrcqa:1.0.20240819"
+      "image": "npac/mrrcqa:1.0.20240822"
     },
     "flywheel": {
       "suite": "utility"
@@ -41,5 +41,5 @@
       "type": "string"
     }
   },
-  "command": "/flywheel/v0/run.py"
+  "command": "/flywheel/v0/runQC.m"
 }
