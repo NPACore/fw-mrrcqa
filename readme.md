@@ -11,8 +11,8 @@ ls outputs/bars.png
 
 ## TODO
 
- [ ] finish reconfiguring manifest to use dicom instead of nifti, rerun `fw-beta gear config` for `oconfig.json` fix
- [ ] break up `Program/dostat.m` and add tests using `input/trunc`
+  * finish reconfiguring manifest to use dicom instead of nifti, rerun `fw-beta gear config` for `oconfig.json` fix
+  * break up `Program/dostat.m` and add tests using `input/trunc`
 
 ## Testing
 
