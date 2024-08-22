@@ -23,6 +23,8 @@ input/phantom_nifti:
 install: .gear-run.txt
 	fw-beta gear upload
 
+example/QA_PRISMA3QA_20240809_180204_160000:
+	cd example && unzip QA_PRISMA3QA_20240809_180204_160000.zip
 
-test:
+test: example/QA_PRISMA3QA_20240809_180204_160000 
 	cd Program/ && octave --eval "test readshimvalues"
