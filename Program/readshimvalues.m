@@ -126,13 +126,13 @@ return;
 end
 
 %!test
-%! [shimvalues,shimmode, strbuff] = readshimvalues('../example/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA') ;
+%! [shimvalues,shimmode, strbuff] = readshimvalues('../input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA') ;
 %! [lOffsetX lOffsetY lOffsetZ sv1 sv2 sv3 sv4 sv5 lFrequency] = num2cell(shimvalues){:};
 %! assert(lOffsetX,  2865);
 %! assert(lFrequency, 123258356);
 
 % values from:
-% example='PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA'
-% dicom_hdr -sexinfo $example | grep -P 'lOffsetX|lFreq'
+% input='PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA'
+% dicom_hdr -sexinfo $input | grep -P 'lOffsetX|lFreq'
 %   sGRADSPEC.asGPAData[0].lOffsetX  =      2865
 %   sTXSPEC.asNucleusInfo[0].lFrequency      =      123258356

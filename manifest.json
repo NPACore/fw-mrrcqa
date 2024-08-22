@@ -25,12 +25,12 @@
     }
   },
   "inputs": {
-    "phantom_nifti": {
+    "phantom_dicom": {
       "description": "phantom nifti file",
       "base": "file",
       "type": {
         "enum": [
-          "nifti"
+          "dicom"
         ]
       }
     }
@@ -41,5 +41,5 @@
       "type": "string"
     }
   },
-  "command": "/flywheel/v0/runQC.m"
+  "command": "/flywheel/v0/run.py"
 }

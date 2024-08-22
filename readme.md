@@ -9,6 +9,11 @@ ls outputs/bars.png
 
 ![](outputs/bars.png)
 
+## TODO
+
+ [ ] finish reconfiguring manifest to use dicom instead of nifti, rerun `fw-beta gear config` for `oconfig.json` fix
+ [ ] break up `Program/dostat.m` and add tests using `input/trunc`
+
 ## Testing
 
 ```
@@ -18,7 +23,6 @@ make test-docker
 
 Using octave `%!test` in-file tests. See bottom of [Program/readshimvalues.m](Program/readshimvalues.m).
 
- [ ] break up `Program/dostat.m` and add tests using `input/trunc`
 
 ## Interfacing with Flywheel
  * repo init with copy from https://gitlab.com/flywheel-io/scientific-solutions/tutorials/Gear-Building-Tutorial/-/tree/hello-world

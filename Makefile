@@ -1,4 +1,4 @@
-.PHONY: all test
+.PHONY: all test example
 DOCKER_NAME := npac/$(shell jq -r .name manifest.json):$(shell jq -r .version manifest.json)
 
 all: .gear-run.txt
@@ -13,23 +13,34 @@ all: .gear-run.txt
 
 config.json: .gear
 	fw-beta gear config --new
-	fw-beta gear config --input phantom_nifti=/home/foranw/mybrain.nii
+	fw-beta gear config --input phantom_dcm=$(PWD)/input/trunc.zip
 
-input/phantom_nifti:
-	mkdir input/phantom_nifti -p
-	cp ~/mybrain.nii input/phantom_nifti
 
-.gear-run.txt: config.json input/phantom_nifti
+.gear-run.txt: config.json input/phantom_dicom/trunc.zip
 	fw-beta gear run | tee $@
 
 install: .gear-run.txt
 	fw-beta gear upload
 
-example/QA_PRISMA3QA_20240809_180204_160000/:
-	cd example && unzip QA_PRISMA3QA_20240809_180204_160000.zip
+input/QA_PRISMA3QA_20240809_180204_160000/:
+	# curl $zip > input/QA_PRISMA3QA_20240809_180204_160000.zip
+	cd input && unzip QA_PRISMA3QA_20240809_180204_160000.zip
 
-test: Program/readshimvalues.m example/QA_PRISMA3QA_20240809_180204_160000/
+example: outputs/stats.json
+outputs/stats.json: $(wildcard Program/*m) input/trunc/
+	Program/QC.m input/trunc
+
+# copy only 4 over for quick testing
+input/trunc/: input/QA_PRISMA3QA_20240809_180204_160000/
+	mkdir $@
+	find input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/ -type f -iname '*IMA' |head -n 5|xargs cp -t $@ 
+
+input/phantom_dicom/trunc.zip: input/trunc/
+	mkdir -p $(dir $@)
+	cd input/trunc/ && zip $(PWD)/$@ -r ./
+
+test: Program/readshimvalues.m input/trunc/
 	cd Program/ && octave --eval "test readshimvalues" #|& tee ../$@
 
 test-docker: .docker
-	docker run -v $(PWD)/example:/flywheel/example:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"
+	docker run -v $(PWD)/input:/flywheel/input:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"

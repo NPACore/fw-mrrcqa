@@ -1,5 +1,5 @@
-function [stat] = dostat(pfolder,tlabel,bfig)
-% function [stat] = dostat(pfolder,tlabel,bfig)
+function [stat] = dostat(pfolder,bfig)
+% function [stat] = dostat(pfolder,bfig)
 
 %{
 %% Release memory
@@ -96,6 +96,7 @@ pe_noiseroi = zeros(nx,ny);
 pe_noiseroi(pe_noiseroi1(1,1):pe_noiseroi1(1,2), pe_noiseroi1(2,1):pe_noiseroi1(2,2)) = 1;
 pe_noiseroi(pe_noiseroi2(1,1):pe_noiseroi2(1,2), pe_noiseroi2(2,1):pe_noiseroi2(2,2)) = 1;
 
+nfile= 4;
 % Measurement memory
 phansignal = zeros(2, nz,nfile); % 1 - mean; 2 - std
 totnoisesignal = zeros(2, nz,nfile);
@@ -209,13 +210,12 @@ end
 
 %% Saving
 %
-maskphan = mask;
-maskbg = 1 - mask;
-maskalias;
-mask_noiseroi = noiseroi;
-mask_ro_noiseroi = ro_noiseroi;
-mask_pe_noiseroi = pe_noiseroi;
 if 0
+    maskphan = mask;
+    maskbg = 1 - mask;
+    mask_noiseroi = noiseroi;
+    mask_ro_noiseroi = ro_noiseroi;
+    mask_pe_noiseroi = pe_noiseroi;
     matfname = [pfolder '/sigstat.mat'];
     save(matfname, 'DATA','t',...
         'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
