@@ -23,7 +23,7 @@ install: .gear-run.txt
 	fw-beta gear upload
 
 input/QA_PRISMA3QA_20240809_180204_160000/:
-	# curl $zip > input/QA_PRISMA3QA_20240809_180204_160000.zip
+	curl -L "https://github.com/NPACore/fw-mrrcqa/releases/download/1.0.20240822_pre-alpa/QA_PRISMA3QA_20240809_180204_160000.zip" > input/QA_PRISMA3QA_20240809_180204_160000.zip
 	cd input && unzip QA_PRISMA3QA_20240809_180204_160000.zip
 
 example: outputs/stats.json
