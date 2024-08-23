@@ -11,9 +11,9 @@ all: .gear-run.txt
 	fw-beta gear build .
 	date > $@
 
-config.json: .gear
+config.json: .gear input/phantom_dicom/trunc.zip
 	fw-beta gear config --new
-	fw-beta gear config --input phantom_dicom=$(PWD)/input/trunc.zip
+	fw-beta gear config --input phantom_dicom=$(PWD)/input/phantom_dicom/trunc.zip
 
 
 .gear-run.txt: config.json input/phantom_dicom/trunc.zip
@@ -22,7 +22,7 @@ config.json: .gear
 install: .gear-run.txt
 	fw-beta gear upload
 
-input/QA_PRISMA3QA_20240809_180204_160000/:
+input/QA_PRISMA3QA_20240809_180204_160000/: | input/
 	curl -L "https://github.com/NPACore/fw-mrrcqa/releases/download/1.0.20240822_pre-alpa/QA_PRISMA3QA_20240809_180204_160000.zip" > input/QA_PRISMA3QA_20240809_180204_160000.zip
 	cd input && unzip QA_PRISMA3QA_20240809_180204_160000.zip
 
@@ -44,3 +44,6 @@ test: Program/readshimvalues.m input/trunc/
 
 test-docker: .docker
 	docker run -v $(PWD)/input:/flywheel/input:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"
+
+%/:
+	mkdir -p $@

@@ -53,7 +53,8 @@ Using octave `%!test` in-file tests. See bottom of [Program/readshimvalues.m](Pr
 ## Interfacing with Flywheel
  * repo init with copy from https://gitlab.com/flywheel-io/scientific-solutions/tutorials/Gear-Building-Tutorial/-/tree/hello-world
 
- * for `nifti` as file type in `manifest.json`, see https://docs.flywheel.io/User_Guides/user_file_types_in_flywheel/
+ * for `archive` as file type in `manifest.json`, see https://docs.flywheel.io/User_Guides/user_file_types_in_flywheel/ (c.f `nifti`)
+ * clasification `qa` picked form list on https://flywheel-io.gitlab.io/tools/app/cli/fw-beta/gear/upload/
 
 
 ## Phantom
