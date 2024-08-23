@@ -30,7 +30,7 @@
       "base": "file",
       "type": {
         "enum": [
-          "dicom"
+          "archive"
         ]
       }
     }

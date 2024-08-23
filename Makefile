@@ -13,7 +13,7 @@ all: .gear-run.txt
 
 config.json: .gear
 	fw-beta gear config --new
-	fw-beta gear config --input phantom_dcm=$(PWD)/input/trunc.zip
+	fw-beta gear config --input phantom_dicom=$(PWD)/input/trunc.zip
 
 
 .gear-run.txt: config.json input/phantom_dicom/trunc.zip

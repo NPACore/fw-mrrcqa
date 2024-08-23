@@ -3,6 +3,7 @@ RUN apt update -y \
   && apt-get -y install octave \
                octave-dicom \
                python3 python3-pip \
+               unzip \
   && pip install nibabel flywheel-sdk --break-system-packages \
   && apt-get autoremove -y \
   && apt-get clean -y \

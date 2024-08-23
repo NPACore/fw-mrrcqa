@@ -9,7 +9,7 @@ dicom_dir = argv{1};
 if length(argv) < 2
   output_dir = 'outputs';
 else
-  output_dir = argv{2}';
+  output_dir = argv{2};
 end
 
 dcm_stats = dostat(dicom_dir, 0);
@@ -20,4 +20,4 @@ fclose(fid);
 
 f = figure('visible','off');
 plotQC(dcm_stats,'', f);
-saveas(f, full_file(output_dir, 'bars.png'));
+saveas(f, fullfile(output_dir, 'bars.png'));
