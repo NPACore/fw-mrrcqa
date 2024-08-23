@@ -12,6 +12,8 @@ ls outputs/bars.png
 
 ## TODO
 
+  * resolve `fw-beta gear install` error
+>  Error: writing blob: determining upload URL: http: no Location header in response
   * break up `Program/dostat.m` and add tests using `input/trunc`
     * optimize/vectorize esp. `std` command? surprisingly slow
     * profile against matlab runtime - switch to ML compiled version if octave is much slow
