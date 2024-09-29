@@ -2,7 +2,7 @@
 DOCKER_NAME := npac/$(shell jq -r .name manifest.json):$(shell jq -r .version manifest.json)
 
 all: .gear-run.txt
-.docker: Dockerfile $(wildcard Program/*) manifest.json
+.docker: Dockerfile manifest.json $(wildcard Program/*)
 	docker build -t $(DOCKER_NAME) ./ 
 	date > $@
 
@@ -39,8 +39,8 @@ input/phantom_dicom/trunc.zip: input/trunc/
 	mkdir -p $(dir $@)
 	cd input/trunc/ && zip $(PWD)/$@ -r ./
 
-test: Program/readshimvalues.m input/trunc/
-	cd Program/ && octave --eval "test readshimvalues" #|& tee ../$@
+test: Program/readshimvalues.m Program/find_all_dicoms.m input/trunc/
+	cd Program/ && octave --eval "test readshimvalues; test find_all_dicoms;" #|& tee ../$@
 
 test-docker: .docker
 	docker run -v $(PWD)/input:/flywheel/input:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"

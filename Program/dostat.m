@@ -54,19 +54,9 @@ tlabel = 'C3P3@P3';
 %}
 
 %% Loading image data
-%
-if !exist(pfolder, 'dir'), error(['given DICOM dir ' pfolder ' does not exist']); end
-nfile = 0;
-ftypes = {'*.IMA', 'MR.*', '*.dcm'}; % dicom file extension. IMA is current Prisma output
-ftype_idx=1;
+% look for IMA, dcm, or MR* files
+D = find_all_dicoms(pfolder);
 
-while nfile < 1 && ftype_idx<length(ftypes)
-   ftype = ftypes{ftype_idx};
-   D = dir([pfolder '/' ftype]);
-   nfile = size(D,1);
-   ftype_idx=ftype_idx+1;
-end
-if nfile < 1, error(['no files files like ' strjoin(ftypes,',') ' in ' pfolder]); end
 % dicom information
 name = D(1,1).name;
 folder = D(1,1).folder;
