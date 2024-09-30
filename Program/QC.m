@@ -4,13 +4,14 @@
 #
 
 addpath(fileparts(mfilename('fullpath')));
-if ~exist('outputs','dir'), mkdir outputs; end
 dicom_dir = argv{1};
 if length(argv) < 2
   output_dir = 'outputs';
 else
   output_dir = argv{2};
 end
+% NB. will not make recursive output dir?
+if ~exist(output_dir,'dir'), mkdir(output_dir); end
 
 dcm_stats = dostat(dicom_dir, 0);
 fid = fopen(fullfile(output_dir, 'stats.json'),'w');
