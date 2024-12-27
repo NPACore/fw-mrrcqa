@@ -1,12 +1,12 @@
 .PHONY: all test example
-DOCKER_NAME := npac/$(shell jq -r .name manifest.json):$(shell jq -r .version manifest.json)
+DOCKER_NAME := $(shell jq -r '.custom."gear-builder".image' manifest.json)
 
 all: .gear-run.txt
-.docker: Dockerfile manifest.json $(wildcard Program/*)
-	docker build -t $(DOCKER_NAME) ./ 
+.docker: Dockerfile $(wildcard Program/*)
+	docker build -t $(DOCKER_NAME) ./
 	date > $@
 
-.gear: .docker
+.gear: manifest.json .docker
 	# source /home/foranw/src/fw-beta-cli/.venv/bin/activate
 	fw-beta gear build .
 	date > $@

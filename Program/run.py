@@ -39,8 +39,10 @@ if context.config.get('write_db'):
         stats = json.load(f)
     #fw = flywheel.Client(context.config.get('key')) # key auto set?
     fw = context.client
-    container = fw.get(context.destination['id']) # analysis container
-    sess = fw.get(container.parent['id'])
+    cid = context.destination['id']
+    container = fw.get(cid) # analysis container
+    #print(f"fw context {cid} container: {container}")
+    sess = fw.get(container.parents.session)
     info = {'snr': stats.get('snrpk')}
     sess.update_info(info)
     print(f"updated sess db: {info}")
