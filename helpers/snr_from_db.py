@@ -1,6 +1,8 @@
-import subprocess
+#!/usr/bin/env python3
 import flywheel # pip install flywheel-sdk
 import pandas as pd
+from wiki_upload import  upload_image
+
 fw = flywheel.Client()
 qc_projects = fw.projects.find("label=~Prisma.QA")
 
@@ -34,27 +36,5 @@ p.tick_params(axis='x', rotation=45)
 p.set_title('peak SNR')
 #plt.margins(.3,tight=True)
 plt.savefig('/tmp/snr.png')
-plt.show()
-
-
-# https://www.dokuwiki.org/devel:xmlrpc#dokuwikilogin
-# https://docs.python.org/3/library/xmlrpc.client.html#xmlrpc.client.ServerProxy.system.listMethods
-# https://github.com/fmenabe/python-dokuwiki/blob/master/dokuwiki.py#L24
-url = 'https://rad.pitt.edu/wiki/'
-user = 'foran'
-password = subprocess.run(['pass','work/pitt'],capture_output=True).stdout.decode().strip()
-
-import base64
-from xmlrpc.client import ServerProxy, Binary
-import subprocess
-auth =  "Basic " + base64.b64encode(f'{user}:{password}'.encode('utf-8')).decode()
-header = [("Authorization", auth)]
-proxy = ServerProxy(url + "lib/exe/xmlrpc.php", headers=header)
-login = proxy.dokuwiki.login(user, password)
-assert login
-with open('/tmp/snr.png','rb') as img:
-    img_data=img.read()
-# base64.b64encode(img_data).decode('utf-8')
-# pitt EWI F5/ASM blocked gives:
-#   ssl.SSLEOFError: EOF occurred in violation of protocol (_ssl.c:2393)
-res = proxy.wiki.putAttachment('mrrc_prismas_snr.png', Binary(img_data), {'ow':True})
+# plt.show()
+upload_image('/tmp/snr.png')
