@@ -1,3 +1,4 @@
+import subprocess
 import flywheel # pip install flywheel-sdk
 import pandas as pd
 fw = flywheel.Client()
@@ -31,42 +32,29 @@ p = sns.scatterplot(x=snr_df.date,
                     hue=snr_df.scanner)
 p.tick_params(axis='x', rotation=45)
 p.set_title('peak SNR')
+#plt.margins(.3,tight=True)
 plt.savefig('/tmp/snr.png')
 plt.show()
 
+
 # https://www.dokuwiki.org/devel:xmlrpc#dokuwikilogin
 # https://docs.python.org/3/library/xmlrpc.client.html#xmlrpc.client.ServerProxy.system.listMethods
+# https://github.com/fmenabe/python-dokuwiki/blob/master/dokuwiki.py#L24
 url = 'https://rad.pitt.edu/wiki/'
+user = 'foran'
+password = subprocess.run(['pass','work/pitt'],capture_output=True).stdout.decode().strip()
 
 import base64
-from xmlrpc.client import ServerProxy
-user = 'npac'
-password = '...' # todo read from secure file?
+from xmlrpc.client import ServerProxy, Binary
+import subprocess
 auth =  "Basic " + base64.b64encode(f'{user}:{password}'.encode('utf-8')).decode()
 header = [("Authorization", auth)]
 proxy = ServerProxy(url + "lib/exe/xmlrpc.php", headers=header)
 login = proxy.dokuwiki.login(user, password)
 assert login
 with open('/tmp/snr.png','rb') as img:
-    img_data=base64.b64encode(img.read())
-res = proxy.wiki.putAttachment('mrrc_prismas_snr.png', img_data, {'ow':True})
-
-import requests
-import re
-# No luck
-upload = 'lib/exe/ajax.php?=undefined&ns=&mediaid=&call=mediaupload&qqfile=mrrc_prismas_snr.png&ow=true'
-session = requests.Session()
-with requests.Session() as session:
-    response = session.post(url + "doku.php", data={'u': user, 'p': password})
-    assert response.status_code == 403
-    # Cookies are automatically stored in the session
-    response = session.get(url + "lib/exe/mediamanager.php?ns=&edid=wiki__text")
-
-    # security token is empty? needs javascript?
-    sectok = re.search('sectok" value=.([^"]*?)',response.text)
-    assert sectok
-    print(sectok.group())
-    # Subsequent requests will use the stored cookies
-    #upload = {'mediamanager__upload_item0': open('/tmp/snr.png', 'rb')}
-    upload = {'file':  '/tmp/snr.png'} # open('/tmp/snr.png', 'rb')}
-    response = session.post(url + "lib/exe/ajax.php?ns=&mediaid=&call=mediaupload&qqfile=mrrc_prismas_snr.png&ow=true", files=upload)
+    img_data=img.read()
+# base64.b64encode(img_data).decode('utf-8')
+# pitt EWI F5/ASM blocked gives:
+#   ssl.SSLEOFError: EOF occurred in violation of protocol (_ssl.c:2393)
+res = proxy.wiki.putAttachment('mrrc_prismas_snr.png', Binary(img_data), {'ow':True})
