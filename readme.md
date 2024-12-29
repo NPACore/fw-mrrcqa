@@ -18,8 +18,6 @@ ls outputs/bars.png
     * optimize/vectorize esp. `std` command? surprisingly slow
     * profile against matlab runtime - switch to ML compiled version if octave is much slow
   * slim docker container: build octave without Xorg or java (likely to be useful for other containers later)
-  * add subset of stats.json to FW DB
-  * create script (outside of flywheel) to plot stats across time
 
 ## Testing
 

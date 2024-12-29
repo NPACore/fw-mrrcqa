@@ -47,3 +47,12 @@ test-docker: .docker
 
 %/:
 	mkdir -p $@
+
+
+## DOCS
+docs/snr_plot:
+	helpers/snr_from_db.py --png docs/snr_plot.png
+.venv:
+	python3 -m virtualenv .venv
+	source .venv/bin/activate && pip install -r requirements_docs.txt
+

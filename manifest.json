@@ -6,8 +6,8 @@
   "author": "Chan Moon",
   "maintainer": "Will Foran <foranw@upmc.edu>",
   "license": "GPL-3.0",
-  "url": "https://github.com/NPACore/flywheel",
-  "source": "https://github.com/NPACore/flywheel",
+  "url": "https://github.com/NPACore/fw-mrrcqa",
+  "source": "https://github.com/NPACore/fw-mrrcqa",
   "environment": {
     "FLYWHEEL": "/flywheel/v0",
     "SHLVL": "1",

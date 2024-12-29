@@ -1,0 +1,29 @@
+site_name: MRRC Phantom QC
+repo_url: https://github.com/NPACore/fw-mrrcqa
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  features:
+    - content.action.edit
+
+markdown_extensions:
+- attr_list
+- admonition
+- footnotes
+- tables
+- pymdownx.snippets
+
+plugins:
+- search
+- autorefs
+- macros:
+    module_name: docs/macros
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        options:
+          show_source: true
+          allow_inspection: true
+#- mkdocs-git-revision-date-localized:
+#    enable_creation_date: true

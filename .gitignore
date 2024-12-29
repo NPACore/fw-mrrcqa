@@ -10,3 +10,4 @@ config.json*
 run.sh
 .input_map.json
 example/
+.venv/
