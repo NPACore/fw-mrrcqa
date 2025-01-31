@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 We want to have a place to share SNR QC measures.
 sftp upload is complicated by UPMC vs Pitt firewall.
@@ -40,7 +40,7 @@ def upload_image(img_path: str, user: str, password: str, wiki_name=None, wiki_u
     header = [("Authorization", auth)]
     proxy = ServerProxy(wiki_url + "lib/exe/xmlrpc.php", headers=header)
     
-    logging.info("wiki log in test")
+    logging.info(f"wiki log in test for {user}")
     login = proxy.dokuwiki.login(user, password)
     assert login
     
@@ -64,9 +64,10 @@ def upload_snr(img_path: str):
     """
 
     password = os.environ.get('WIKIPASS') or subprocess.run(['pass','work/pitt'],capture_output=True).stdout.decode().strip()
-    logging.debug("using password: %s", password)
+    #logging.debug("using password: %s", password)
 
-    return upload_image(img_path, 'foran', password, wiki_name='mrrc_prismas_snr.png')
+    user = os.environ.get('WIKIUSER','foran')
+    return upload_image(img_path, user, password, wiki_name='mrrc_prismas_snr.png')
 
 if __name__ == "__main__":
     upload_snr('/tmp/snr.png')

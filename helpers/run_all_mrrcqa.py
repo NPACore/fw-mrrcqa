@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 import flywheel
-DRYRUN = False
+DRYRUN = os.environ.get("DRYRUN")
 fw = flywheel.Client()
 mrrcqa_gear = fw.lookup("gears/mrrcqa")
 

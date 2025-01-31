@@ -11,3 +11,5 @@ run.sh
 .input_map.json
 example/
 .venv/
+.creds
+__pycache__/
