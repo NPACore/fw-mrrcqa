@@ -56,3 +56,5 @@ docs/snr_plot:
 	python3 -m virtualenv .venv
 	source .venv/bin/activate && pip install -r requirements_docs.txt
 
+Program/mask_structuring_elements.mat: Program/mask_structuring_elements.m
+	cd $(dir $@) && matlab -r mask_structuring_elements.m

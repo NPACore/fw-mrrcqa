@@ -2,6 +2,7 @@ FROM debian:bookworm-slim
 RUN apt update -y \
   && apt-get -y install octave \
                octave-dicom \
+               octave-image \
                python3 python3-pip \
                unzip \
   && pip install nibabel flywheel-sdk --break-system-packages \

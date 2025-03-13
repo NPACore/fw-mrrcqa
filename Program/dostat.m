@@ -9,7 +9,15 @@ clear all;
 
 % load depends if running octave
 % see 'pkg install dicom -forge' or e.g. 'yay -S octave-dicom' (needs GDCM lib)
-if exist('OCTAVE_VERSION', 'builtin') ~= 0, pkg load dicom; end
+if exist('OCTAVE_VERSION', 'builtin') ~= 0; pkg load dicom image; end
+
+% structuring element for erosion
+% NB. octave does not support MATLABs default n=4 (line structuring elements)
+% see mask_structuring_elements.m:
+% se = strel('disk', 3);  % mask (values > 1.2 * mean)
+% sec = strel('disk', 7); % centering mask
+cached_se = fullfile(fileparts(mfilename),'mask_structuring_elements.mat');
+load(cached_se); % se and sec
 
 stat = [];
 
@@ -23,10 +31,13 @@ noiseroi2 = [2 12; 83 93];
 noiseroi3 = [83 93; 2 12];
 noiseroi4 = [83 93; 83 93];
 
-ro_noiseroi1 = [13 82; 2 12]; % RO noise ROI <- central range in PE direction (green in Fig. 2D)
-ro_noiseroi2 = [13 82; 83 93];
+% RO noise ROI <- central range in PE direction (green in Fig. 2D)
+% 20250312 - shift by a pixel
+%ro_noiseroi1 = [13 82; 2 12]; %ro_noiseroi2 = [13 82; 83 93];
+ro_noiseroi1  = [13 82; 1 12];  ro_noiseroi2 = [13 82; 83 94];
 
-pe_noiseroi1 = [2 12; 13 82]; % PE noise ROI <- brown area in Fig. 2D
+% PE noise ROI <- brown area in Fig. 2D
+pe_noiseroi1 = [2 12; 13 82];
 pe_noiseroi2 = [83 93; 13 82];
 
 %{
@@ -104,6 +115,8 @@ MASK = zeros(nx,ny,nz);
 TR = info.RepetitionTime; %msec
 cnt = 1;
 t = [];
+DX = [];
+DY = [];
 %for i=1:nfile %1st - reference
 for i=1:nfile
     % dicom  file
@@ -121,6 +134,7 @@ for i=1:nfile
     data = dicomread(info);
     %figure(1); imagesc(data); axis image; colormap(gray); drawnow;
     % de-mosaic
+    icnt = 1;
     for jj=1:my % row
         for ii=1:mx % column
             ll = ii + (jj-1)*mx;
@@ -130,8 +144,16 @@ for i=1:nfile
             jr = (jj-1)*ny+1:jj*ny;
 
             % data in 4D
-            DATA(:,:,ll,i) = circshift(data(jr,ir),ishift);
-            dataslice = DATA(:,:,ll,i);
+            if cnt == 1
+                DATA(:,:,ll,i) = circshift(data(jr,ir),ishift);
+                DATA(:,1,ll,i) = DATA(:,2,ll,i);
+                dataslice = DATA(:,:,ll,i);
+            else
+                DATA(:,:,ll,i) = circshift(data(jr,ir),ishift);
+                DATA(:,1,ll,i) = DATA(:,2,ll,i);
+                DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),[DX(icnt) DY(icnt)]);
+                dataslice = DATA(:,:,ll,i);
+            end
 
             % mask per slice
             if cnt==1
@@ -140,16 +162,50 @@ for i=1:nfile
                 sdval = std(std(DATA(:,:,ll,i),[],1),[],2);
                 mask = zeros(nx,ny);
     
-                mask = mask(:); tmp = tmp(:); I = find(tmp > mnval);
+                afactor = 1.2;
+
+                mask = mask(:); tmp = tmp(:); I = find(tmp > afactor*mnval);
                 mask(I) = 1; mask = reshape(mask,nx,ny);
                 maskalias = circshift(mask, [nx/2 0]);
                 maskalias = maskalias - and(maskalias, mask);
+
+                %centering
+                cemask = imerode(mask, sec);
+                [I,J] = find(cemask >= 1);
+                    I0 = ceil(mean(I));
+                    J0 = ceil(mean(J));
+                    dx = nx/2+1 - I0;
+                    dy = ny/2+1 - J0;
+                DX = [DX dx];
+                DY = [DY dy];
     
+                emask = imerode(mask, se);
+                emaskalias = imerode(maskalias, se);
+                if 1
+                    mask = emask;
+                    maskalias = emaskalias;
+
+                    % centering
+                    DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),[dx dy]);
+                    mask = circshift(mask,[dx dy]);
+                    maskalias = circshift(maskalias,[dx dy]);
+                    % noise ROI
+                    if 0
+                    if icnt==1
+                        ro_noiseroi = circshift(ro_noiseroi,[dx dy]);
+                        noiseroi = circshift(noiseroi,[dx dy]);
+                        pe_noiseroi = circshift(pe_noiseroi,[dx dy]);
+                    end
+                    end
+                end
+
                 if bfig==1
                     figure(2); subplot(2,2,1); imagesc(log(DATA(:,:,ll,i)),[0 10]); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
                     figure(2); subplot(2,2,2); imagesc(mask); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
                     figure(2); subplot(2,2,3); imagesc(maskalias); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
                     figure(2); subplot(2,2,4); imagesc(noiseroi+2*ro_noiseroi+4*pe_noiseroi); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
+
+                    if icnt==1, set(gcf, 'Windowstyle', 'docked'); saveas(gcf,['mask_rois.png'],'png'); end
                 end
             end
 
@@ -172,6 +228,8 @@ for i=1:nfile
 
             % phantom mask in 3D
             MASK(:,:,ll) = reshape(mask,nx,ny);
+
+            icnt = icnt+1;
         end
     end
 
