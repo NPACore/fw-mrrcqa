@@ -31,7 +31,7 @@ def update_stat(acq: Acq) -> bool:
     """Add snr peak to FW DB as 'snr' in session.
     :param acq: Flyweehl acqusition object with MRRC gear output"""
     ses = fw.get(acq.session)
-    if ses.info.get('snr'):
+    if ses.info.get('shim'):
         logging.info("skipping %s, have %s", ses.label, ses.info)
         return False
 
@@ -41,7 +41,12 @@ def update_stat(acq: Acq) -> bool:
         logging.warning("%s has no snr peak in stats.json", ses.label)
         return False
 
-    ses.update_info({'snr': snr})
+    new_info = {'snr': snr,
+                'tsnr': stats.get('tsnrpk'),
+                'shim': stats.get('shim'),
+                'alias': stats.get('aliaspk'),
+                'bkoff':stats.get('bkoffpk')}
+    ses.update_info(new_info)
     return True
 
 def add_snr_to_all():
@@ -49,9 +54,11 @@ def add_snr_to_all():
     Run update_stats for all sessions with a ``stats.json`` file.
     These sessions have had the MRRC QC gear run.
     """
+    logging.info("querying all QA ep2d acquisitions")
     acqs = fw.acquisitions.find(filter=f"label=ep2d_bold_p2_s2_5min")
     # skip any missing the gear output stats json file
     acqs = list(filter(lambda x: x.get_file('stats.json'), acqs))
+    logging.info("finished ep2d query")
     assert len(acqs) > 1
     for acq in acqs:
         update_stat(acq)

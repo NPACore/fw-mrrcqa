@@ -49,7 +49,11 @@ def update_db(context: flywheel.GearContext):
     container = fw.get(cid) # analysis container
     #print(f"fw context {cid} container: {container}")
     sess = fw.get(container.parents.session)
-    info = {'snr': stats.get('snrpk')}
+    info = {'snr': stats.get('snrpk'),
+            'tsnr': stats.get('tsnrpk'),
+            'shim': stats.get('shim'),
+            'alias': stats.get('aliaspk'),
+            'bkoff':stats.get('bkoffpk')}
     sess.update_info(info)
     print(f"updated sess db: {info}")
 
@@ -75,6 +79,7 @@ print(f"input path: '{input_path}'")
 os.makedirs("/flywheel/v0/work/",exist_ok=True)
 subprocess.run(["unzip", "-j", "-d", "/flywheel/v0/work/dicoms/", input_path], check=True)
 subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", "/flywheel/v0/outputs/"])
+# 20250312: no outputs?!
 subprocess.run(["ls", "-R", "/flywheel/v0/output"])
 
 if context.config.get('write_db'):

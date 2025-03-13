@@ -14,42 +14,81 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG").upper(),
 format="%(asctime)s:%(levelname)s:%(name)s:%(message)s"
 )
 
+class SNR:
+    def __init__(self):
+        self.fw = flywheel.Client()
+        qc_projects = self.fw.projects.find("label=~Prisma.QA")
 
-def all_snr() -> pd.DataFrame:
-    """
-    Fetch info.snr from all Prisma[123]QA projects' sessions.
-    :return: dataframe with columns date, snr, scanner (project)
-    """
-    fw = flywheel.Client()
-    qc_projects = fw.projects.find("label=~Prisma.QA")
+        # session only refers to project by id. get label lookup from project list
+        self.p_lookup = {p.id: p.label.replace("QA", "") for p in qc_projects}
+        # ['Prisma1', 'Prisma2', 'Prisma3']
 
-    # session only refers to project by id. get label lookup from project list
-    p_lookup = {p.id: p.label.replace("QA", "") for p in qc_projects}
-    # ['Prisma1', 'Prisma2', 'Prisma3']
+    def all_qc_sess(self):
+        """
+        :return:  list of all flywheel PrismaQA sessions
+        """
+    
+        logging.info("Finding sessions")
+        qc_sess = self.fw.sessions.find("project.label=~Prisma.QA")
+        # info not populated by sessions.find?!
+        assert len(qc_sess) > 0  # 294
+        assert qc_sess[1].info == {}
+        assert self.fw.get(qc_sess[1].id).info != {}  # {'snr': 243.2354653590228}
 
-    logging.info("Finding sessions")
-    qc_sess = fw.sessions.find("project.label=~Prisma.QA")
-    # info not populated by sessions.find?!
-    assert len(qc_sess) > 0  # 294
-    assert qc_sess[1].info == {}
-    assert fw.get(qc_sess[1].id).info != {}  # {'snr': 243.2354653590228}
+        # takes some time (minute?! for ~300 sessions)
+        # 20250312 1.5 min for 481
+        logging.info("Loading sessions")
+        qc_sess = [self.fw.get(x.id) for x in qc_sess]
+        logging.info("Loaded")
+        return qc_sess
 
-    # takes some time (minute?! for ~300 sessions)
-    logging.info("Loading sessions")
-    qc_sess = [fw.get(x.id) for x in qc_sess]
+    def all_shim_and_snr(self) -> pd.DataFrame:
+        """
+        updated (20250312) version of all_snr for plotting in R.
+        includes shim values
+        """
+        qc_sess = self.all_qc_sess()
+        snr = [
+            {
+                **s.info, # snr tsnr alias bkoff shim
+                "date": s.subject.created,
+                "scanner": self.p_lookup.get(s.project),
+            }
+            for s in qc_sess
+            if s.info.get("snr")
+        ]
+        snr.sort(key=lambda x: x["date"])
+        snr_df = pd.DataFrame(snr)
 
-    snr = [
-        {
-            "date": s.subject.created,
-            "snr": s.info.get("snr"),
-            "scanner": p_lookup.get(s.project),
-        }
-        for s in qc_sess
-        if s.info.get("snr")
-    ]
-    snr.sort(key=lambda x: x["date"])
-    snr_df = pd.DataFrame(snr)
-    return snr_df
+        #: shims are stored as an array of 8 elements
+        #: see runp1.m::reportstatgrpstruct(cnt).SNR = stat.snrpk;
+        #: NB. B0 is /1000 in matlab but not here
+        shims = snr_df['shim'].apply(pd.Series)
+        shims.columns=['X', 'Y', 'Z',
+                       'X2', 'Y2', 'Z2', 'XY', 'S2',
+                       'B0']
+        snr_expand = snr_df.drop(columns=['shim']).join(shims)
+        return snr_expand
+
+    def all_snr(self) -> pd.DataFrame:
+        """
+        Fetch info.snr from all Prisma[123]QA projects' sessions.
+        see all_shim_and_snr for snr +  shim values
+        :return: dataframe with columns date, snr, scanner (project)
+        """
+        qc_sess = self.all_qc_sess()
+        snr = [
+            {
+                "date": s.subject.created,
+                "snr": s.info.get("snr"),
+                "scanner": self.p_lookup.get(s.project),
+            }
+            for s in qc_sess
+            if s.info.get("snr")
+        ]
+        snr.sort(key=lambda x: x["date"])
+        snr_df = pd.DataFrame(snr)
+        return snr_df
 
 
 def plot_snr(snr_df: pd.DataFrame):
@@ -67,7 +106,8 @@ def plot_snr(snr_df: pd.DataFrame):
 
 def main(upload=False, png=None):
 
-    snr_df = all_snr()
+    snr = SNR()
+    snr_df = snr.all_snr()
     p = plot_snr(snr_df)
     # plt.show()
     if upload:
