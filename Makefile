@@ -57,4 +57,4 @@ docs/snr_plot:
 	source .venv/bin/activate && pip install -r requirements_docs.txt
 
 Program/mask_structuring_elements.mat: Program/mask_structuring_elements.m
-	cd $(dir $@) && matlab -r mask_structuring_elements.m
+	cd $(dir $@) && matlab -nodisplay -r 'try, run mask_structuring_elements; end; quit'
