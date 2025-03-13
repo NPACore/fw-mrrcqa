@@ -22,13 +22,15 @@ if ~exist(output_dir,'dir'), mkdir(output_dir); end
 
 json_outfile = fullfile(output_dir, 'stats.json');
 
-fprintf('saving to %s\n', json_outfile);
-fid = fopen(json_outfile,'w');
 %dcm_stats_write = rmfield(dcm_stats,'bufstr');
-fwrite(fid, jsonencode(dcm_stats));
+json_str = jsonencode(dcm_stats);
+fprintf('saving %d chars of json to %s\n', length(json_str), json_outfile);
+fid = fopen(json_outfile,'w');
+fprintf(fid, '%s', json_str);
 fclose(fid);
 
 image_outfile = fullfile(output_dir, 'bars.png');
+fprintf('saving bar figure to %s\n', image_outfile);
 f = figure('visible','off');
 plotQC(dcm_stats,'', f);
 saveas(f, image_outfile);

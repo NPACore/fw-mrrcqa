@@ -78,7 +78,7 @@ print(f"input path: '{input_path}'")
 
 os.makedirs("/flywheel/v0/work/",exist_ok=True)
 subprocess.run(["unzip", "-j", "-d", "/flywheel/v0/work/dicoms/", input_path], check=True)
-subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", "/flywheel/v0/outputs/"])
+subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", "/flywheel/v0/output/"])
 # 20250312: no outputs?!
 subprocess.run(["ls", "-R", "/flywheel/v0/output"])
 
