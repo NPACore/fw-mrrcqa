@@ -70,6 +70,17 @@ class SNR:
         snr_expand = snr_df.drop(columns=['shim']).join(shims)
         return snr_expand
 
+    def all_shim_and_snr_csv(self, fname) -> None:
+        """
+        wrapper to use in R for getting data
+          using intermediate csv file b/c reticulate::py_to_r()'s
+          dataframe has numpy.float64 columns that dont play well w/dplyr
+
+        :param fname: csv output to write
+        :returns: None -- expects R to reuse fname given
+        """
+        self.all_shim_and_snr().to_csv(fname)
+
     def all_snr(self) -> pd.DataFrame:
         """
         Fetch info.snr from all Prisma[123]QA projects' sessions.
