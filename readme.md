@@ -12,8 +12,6 @@ ls outputs/bars.png
 
 ## TODO
 
-  * resolve `fw-beta gear install` error
->  Error: writing blob: determining upload URL: http: no Location header in response
   * break up `Program/dostat.m` and add tests using `input/trunc`
     * optimize/vectorize esp. `std` command? surprisingly slow
     * profile against matlab runtime - switch to ML compiled version if octave is much slow
@@ -30,7 +28,7 @@ Using octave `%!test` in-file tests. See bottom of [Program/readshimvalues.m](Pr
 
 ## Editiing
 
- * `Makefile` guides through steps 
+ * `Makefile` guides through steps
    * see `.docker` then `.gear` for packaging
    * mess of other files for `.gear-run.txt` with various input files setup (download input zip and setup `config.json`)
       * [`fw-beta`](https://flywheel-io.gitlab.io/tools/app/cli/fw-beta/) is used for gear setup
@@ -61,3 +59,27 @@ Using octave `%!test` in-file tests. See bottom of [Program/readshimvalues.m](Pr
 
 ![](docs/QAphantcoil.png)
 ![](docs/screenshot.png)
+
+
+## Uploading
+as in Makefile, the final upload uses `fw-beta gear upload .`. But the F5 managed firewall might block requests. And flywheel will error if using podman instead of docker.
+>  Error: writing blob: determining upload URL: http: no Location header in response
+
+### Flywheel bug
+v20.1 (2024-03) cannot recieve `docker push`, `fw gear upload` is broken until v20.2
+
+
+### Podman vs Docker
+`fw-beta gear install` wont work with podman and docker is rate limted. But can copy from podman to docker using save/load.
+
+via [SO](https://stackoverflow.com/questions/23935141/how-to-copy-docker-images-from-one-host-to-another-without-using-a-repository), can `docker load`
+```
+docker save localhost/npac/mrrcqa:1.1.20250312.01 | bzip2 | pv | ssh r docker load
+```
+
+### mitmproxy: debug firewall
+```
+SSLKEYLOGFILE="/tmp/ssl.log" mitmproxy
+# trust anchor --store mitmproxy.crt # crt from http://mitm.it/
+HTTPS_PROXY=http://localhost:8080 docker push fw.mrrc.upmc.edu/mrrcqa:1.1.20250312.01
+```
