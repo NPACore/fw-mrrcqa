@@ -4,7 +4,8 @@ Flywheel wrapper for octave stats generating routine.
 
 1. unzip dicom specified as 'phantom_dicom'
 2. run octave
-3. writes 'snr' to session flywheel data container
+3. writes stats.json
+4. puts 'tsnr' into session info (flywheel data container)
 
 The software container described by 'Dockerfile' can work independently of flywheel.
 And will run the matlab (octave) QC.m
@@ -17,19 +18,25 @@ For Flywheel specific execution, manifest.json specifies this file
 
 In either, the base directory is `/flywheel/v0` (``$FLYWHEEL``)
 
+This runs as a "SDK gear" and needs to be given read-write access
+  to add 'info.snr' to the session's data container.
 
-This runs as a "SDK gear" and needs to be given read-write access to add 'info.snr' to the session's data container.
+The python code to write to FW's database was modernized from the very helpful
+  writeup on https://pennlinc.github.io/docs/flywheel/Gear_development/
 
-The python code to write to FW's database was modernized from the very helpful write on https://pennlinc.github.io/docs/flywheel/Gear_development/
+
+20250404WF - updated to use context.output_dir instead of hard coded '/flywheel/v0/outputs'
+             and created the MockContext class to deal with increasing number of mocked things
 """
 
 import sys
 import os
 import subprocess
+import json  # for reading matlab output
 import flywheel
-import json # for reading matlab output
 #import nibabel as nib
 #import numpy as np
+
 
 def update_db(context: flywheel.GearContext):
     """
@@ -41,7 +48,8 @@ def update_db(context: flywheel.GearContext):
 
     :param context: implicit context when running as a gear
     """
-    with open('/flywheel/v0/outputs/stats.json', 'r') as f:
+    stats_file = os.path.join(context.output_dir, 'stats.json')
+    with open(stats_file, 'r') as f:
         stats = json.load(f)
     #fw = flywheel.Client(context.config.get('key')) # key auto set?
     fw = context.client
@@ -58,29 +66,93 @@ def update_db(context: flywheel.GearContext):
     print(f"updated sess db: {info}")
 
 
-if len(sys.argv) > 1:
-    input_path = sys.argv[1]
-    # mock
-    context = lambda _: None
-    context.client = flywheel.Client()
-    context.config = {"phantom_dicom": input_path,
-              "write_db": False,
-              "key": None}
-else:
-    context = flywheel.GearContext()
-    config = context.config
-    input_path = context.get_input("phantom_dicom")["location"]["path"]
+class MockContext():
+    """Minimal mock of GearContext when testing.
+    Also potentially useful for running outside of flywheels gear infrastucture
+    """
+    destination = {'id': None}
+    config = {"phantom_dicom": None, "write_db": False, "key": None}
+    output_dir = '/flywheel/v0/outputs/'  # default output location
 
-# print(f"env: nii {os.environ.get('phantom_nifti')}") # None
-# print(f"config: {context.config.get('phantom_nifti')}") # None
+    def __init__(self, input_path):
+        self.client = flywheel.Client()
 
-print(f"input path: '{input_path}'")
+        # update gear config to be either the downloaded zip file
+        # or original input file (zip)
+        #input_path = self.maybe_download(input_path)
 
-os.makedirs("/flywheel/v0/work/",exist_ok=True)
-subprocess.run(["unzip", "-j", "-d", "/flywheel/v0/work/dicoms/", input_path], check=True)
-subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", "/flywheel/v0/output/"])
-# 20250312: no outputs?!
-subprocess.run(["ls", "-R", "/flywheel/v0/output"])
+        self.config["phantom_dicom"] = input_path
 
-if context.config.get('write_db'):
-    update_db(context)
+    def maybe_download(self, input_path):
+        """
+        UNTESTED! UNFINISHED!
+        input path should be a zip file
+        but maybe it's a flywheel container id of a zip file
+        :param input_path: path to dicom zip that might be a flywheel id instead
+        :sideeffects: download from flyhweel
+        """
+        if os.path.isfile(input_path):
+            return input_path
+        file = self.client.get(input_path)
+        # TODO confirm test id is a file ending with zip
+        if file:
+            self.destination = {'id': file.parent}
+        else:
+            raise Exception(f"'{input_path}' is not a vaid path nor id")
+        # TODO: fix saveas
+        save_as = "/flywheel/v0/work/input.zip"
+        # TODO: check ths works
+        file.download_file(save_as)
+        input_path = save_as
+        return input_path
+
+    def upload(self):
+        """
+        UNFINISHED! don't use
+        Attempt to work around unable to upload docker container
+        """
+        stats_file = os.path.join(self.output_dir, 'stats.json')
+        if not self.destination.get('id'):
+            raise Exception("trying to upload without destination id")
+        if not os.path.isfile(stats_file):
+            raise Exception("Failed to create {STATS_OUTPUT_FILE}")
+        # TODO: find flywheel upload command
+        acq_or_analysis = self.client.get(self.destination['id'])
+        ses = acq.parent
+        analysis = ses.add_analysis(label='')
+        analysis.upload_output(stats_file)
+        ses.upload(stats_file)
+
+
+def main():
+    """
+    Run CH's Phantom QC Matlab code via octave.
+    Optionally update the session info to include tsnr
+    """
+    if len(sys.argv) > 1:
+        input_path = sys.argv[1]
+        context = MockContext(input_path)
+
+    else:
+        context = flywheel.GearContext()
+        input_path = context.get_input("phantom_dicom")["location"]["path"]
+
+    # print(f"env: nii {os.environ.get('phantom_nifti')}") # None
+    # print(f"config: {context.config.get('phantom_nifti')}") # None
+
+    print(f"input path: '{input_path}'")
+
+    os.makedirs("/flywheel/v0/work/", exist_ok=True)
+    subprocess.run(["unzip", "-j", "-d", "/flywheel/v0/work/dicoms/", input_path], check=True)
+    subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", context.output_dir])
+    # 20250312: no outputs?!
+    subprocess.run(["ls", "-R", context.output_dir])
+
+    if context.config.get('write_db'):
+        update_db(context)
+    if len(sys.argv) > 1 and context.destination is not None:
+        print("TODO: upload stats.json")
+
+
+if __name__ == "__main__":
+    main()
