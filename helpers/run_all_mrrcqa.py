@@ -24,11 +24,14 @@ def run_mrrcqa(f: flywheel.models.file_output.FileOutput):
 
 
 # Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.snr
-files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~ep2d_bold_.*5min,name=~zip')
+files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~ep2d_bold_.*5min,name=~zip', limit=1e10)
+i = 0
 for f in files:
+    i += 1
     acq = fw.get(f.parents['acquisition'])
     ses = fw.get(f.parents['session'])
 
+    print(f"# {i}/{len(files)} running for {ses.subject.code} {ses.label} {f.name}")
     # can skip if a sufficnetly new gear has been run
     try:
         stats_idx = [x.name for x in acq.files].index('stats.json')
@@ -38,7 +41,10 @@ for f in files:
             continue
         print(f"# version too old: {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' {version}")
     except ValueError:
-        pass
+        # didn't run yet?
+        if ses.info.get('shim'):
+            print(f"# {ses.label} has shim tag")
+            continue
 
     #if 'stats.json' in [x.name for x in acq.files]:
     #    print(f"# {ses.label} {acq.label} has stats.json")
@@ -47,6 +53,5 @@ for f in files:
     #    print(f"# {ses.label} has stats.json")
     #    continue
 
-    print(f"running for {ses.subject.code} {ses.label} {f.name}")
     if not DRYRUN:
         print(run_mrrcqa(f))
