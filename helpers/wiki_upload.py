@@ -63,10 +63,10 @@ def upload_snr(img_path: str):
     :param img_path: path of image to upload. likely a temporary file. See snr_from_db.py
     """
 
-    password = os.environ.get('WIKIPASS') or subprocess.run(['pass','work/pitt'],capture_output=True).stdout.decode().strip()
+    password = os.environ.get('WIKIPASS') or subprocess.run(['pass', 'wiki/npac'],capture_output=True).stdout.decode().strip()
     #logging.debug("using password: %s", password)
 
-    user = os.environ.get('WIKIUSER','foran')
+    user = os.environ.get('WIKIUSER', 'npac')
     return upload_image(img_path, user, password, wiki_name='mrrc_prismas_snr.png')
 
 if __name__ == "__main__":
