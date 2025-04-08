@@ -84,6 +84,44 @@ main <- function() {
    upload_img('PhantomQC.png')
 }
 
+compare_excel_fw <- function(d, d.x) {
+   x <- d.x |> select(DATE,tsnr=tSNR,scanner) |> mutate(from='excel')
+   f<- d|>select(DATE,tsnr,scanner)|>mutate(from='fw')
+   p_vals <- rbind(x,f) |> ggplot() +
+       aes(x=lubridate::ymd(DATE),y=tsnr, color=from) +
+       geom_point(alpha=.7) +
+       facet_grid(scanner~.) +
+       theme_bw() +
+       theme(legend.position="inside",
+             legend.direction = "horizontal",
+             legend.position.inside=c(.5,1)) +
+       labs(x="date", title="tsnr over time")
+
+   dx.long <- d.x |>
+       select(date=DATE,scanner, snr=SNR,alias=ALIAS,tsnr=tSNR,Z) |>
+       pivot_longer(cols=c(snr,alias,tsnr,Z))
+   d.long <- d |> select(date=DATE,scanner, snr,alias,tsnr,Z) |>
+       pivot_longer(cols=c(snr,alias,tsnr,Z))
+   long.m <- merge(dx.long,d.long, by=c("date","scanner", "name"), suffixes=c('_x','_f')) |> mutate(x_f = value_x-value_f)
+   long.stats <- long.m |> group_by(scanner,name) |> summarise(mean(x_f), n=n(), md=median(x_f), mx=max(x_f), mn=min(x_f), sd=sd(x_f))
+
+   p_box <- ggplot(long.m) +
+       aes(y=x_f, x=name, fill=scanner) +
+       geom_boxplot() +
+       theme_bw() +
+       theme(legend.position="inside",
+             legend.direction = "horizontal",
+             legend.position.inside=c(.5,1)) +
+       labs(x="measure",y="excel - flywheel", title="difference of meassures")
+
+  cowplot::plot_grid(p_vals, p_box, nrow=2)
+
+  dx.p <- gen_plot(d.x) + ggtitle('excel')
+  d.p <- gen_plot(d) + ggtitle('fw')
+  cowplot::plot_grid(dx.p, d.p, nrow=2)
+
+}
+
 # if run by script, not sourced
 if (sys.nframe() == 0) main()
 
