@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
+# guix shell python r r-reticulate r-pacman r-dplyr r-tidyr r-ggplot2 -- ./plots.R
 if(! 'pacman' %in% installed.packages()) install.packages('pacman')
-pacman::p_load(dplyr, tidyr, ggplot2, reticulate)
+pacman::p_load(dplyr, tidyr, ggplot2, reticulate, ggrepel)
 use_virtualenv("../.venv")
 
 # read in from excel sheets. one per scanner
@@ -28,9 +29,9 @@ read_flywheel <- function(){
     unlink(fname)
     return(d)
 }
-upload_img <- function(img_file){
+upload_img <- function(img_path){
     up <- import("wiki_upload")
-    up$upload_snr(img_file)
+    up$upload_snr(img_path)
 }
 
 
@@ -57,6 +58,12 @@ gen_plot <- function(d) {
   suspect <- d_stat|>filter(m %in% c('SNR','tSNR','Z'),v_gtsd)
   
   # plot lines for all and points for suspect values
+  lastday <- format(max(d_stat$DATE), "%m/%d")
+  tsnr_string <- d_stat |>
+    filter(DATE == max(d_stat$DATE), m=='tsnr') |>
+    with(paste(scanner,round(v,1), sep=":", collapse=", ")) |>
+    gsub(pattern='Prisma', replacement='P')
+
   p <- d_stat |>
    filter(mtype!='ignore') |>
    ggplot() +
@@ -65,8 +72,8 @@ gen_plot <- function(d) {
       geom_point(data=suspect, color='red') +
       ggrepel::geom_text_repel(data=suspect, aes(label=m, color=NULL)) +
       facet_grid(mtype~scanner, scale='free_y') +
-      labs(x="Day",y="percent from mean", title="Phantom QC",
-           subtitle="flag SNR or Z w/ SD > 3") +
+      labs(x="Day",y="percent from mean", title=paste0("Phantom QC ", lastday),
+           subtitle=paste0("flag SNR or Z w/ SD > 3; ", tsnr_string)) +
       theme_bw()
 }
 
@@ -74,4 +81,9 @@ main <- function() {
    d <- read_flywheel()
    p <- gen_plot(d)
    ggsave(p, file='PhantomQC.png', width=14, height=3.57)
+   upload_img('PhantomQC.png')
 }
+
+# if run by script, not sourced
+if (sys.nframe() == 0) main()
+
