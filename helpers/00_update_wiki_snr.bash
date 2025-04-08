@@ -1,7 +1,36 @@
+#!/usr/bin/env bash
+
+# update tsnr plot on wiki
+#  https://rad.pitt.edu/wiki/doku.php?id=scan
+# expect to be run by cron
+# after flywheel has run ../Program/run.py on newest phantomQA
+#
+# 20250407WF - working on Zeus with guix
+
 cd "$(dirname "$0")"
-[[ $(uname -a) =~ crc ]] && module load python/ondemand-jupyter-python3.11
-source ../.venv/bin/activate # python3 -m venv ../.venv
-source .creds
+source .creds # set WIKIUSER and WIKIPASS
+
+# if env not set, use 'pass' with hard codd ponts. to set
+# gpg2 --gen-key; gpg2 --list-secret-keys --keyid-format LONG; pass init ABCDEF1234567890
+# pass create wiki/npac
+
+# # python setup
 # python3 -m pip install -r ./requirements.txt
 # DRYRUN=1 ./run_all_mrrcqa.py
-./snr_from_db.py -u > snr_wiki.log 2>&1
+#./snr_from_db.py -u > snr_wiki.log 2>&1
+
+case "$(uname -a)" in
+ *Zeus*)
+   # 20250407 - use guix
+   # likely in /raidzeus/src/fw-mrrcqa/helpers
+   export GUIX_PROFILE=/home/foranw/.guix-profile
+   source $GUIX_PROFILE/etc/profile
+   export PATH="/home/foranw/.config/guix/current/bin:$PATH"
+   guix shell \
+     glibc@2.39 r r-ggrepel  r-reticulate r-dplyr r-tidyr r-ggplot2 -- \
+     ./plots.R;;
+ *) # *crc*
+   [[ $(uname -a) =~ crc ]] && module load python/ondemand-jupyter-python3.11 r
+   source ../.venv/bin/activate # python3 -m venv ../.venv
+   ./plot.R;;
+esac
