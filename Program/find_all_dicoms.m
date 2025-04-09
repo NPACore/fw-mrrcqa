@@ -6,7 +6,7 @@ function D = find_all_dicoms(pfolder)
   ftypes = {'MR.*', '*.dcm', '*.IMA'}; % dicom file extension. IMA is current Prisma output
   ftype_idx=1;
   
-  if !exist(pfolder, 'dir'), error(['given DICOM dir ' pfolder ' does not exist']); end
+  if ~ exist(pfolder, 'dir'), error(['given DICOM dir ' pfolder ' does not exist']); end
   while nfile < 1 && ftype_idx<=length(ftypes)
      % fprintf('%d: looking for %s\n', ftype_idx, ftypes{ftype_idx})
      ftype = ftypes{ftype_idx};
