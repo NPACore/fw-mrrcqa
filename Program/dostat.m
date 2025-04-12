@@ -88,6 +88,12 @@ nz = double(info.LocationsInAcquisition);
 mx = info.Columns/nx;
 my = info.Rows/ny;
 
+% ep2d mosaic example dims
+% 7x7 grid, each with 94x94
+% [nx, ny, nz]               ==  94   94  46
+% [info.Columns, info.Rows]  == 658  658
+% [mx, my]                   ==   7    7
+
 % 4 corner noise ROI
 noiseroi = zeros(nx,ny);
 noiseroi(noiseroi1(1,1):noiseroi1(1,2), noiseroi1(2,1):noiseroi1(2,2)) = 1;
@@ -131,7 +137,7 @@ nmasks = 5; % mask, bg, noise, ro, pe
 roi_area = zeros(mx, my, nfile, nmasks);
 mask_thresh = zeros(mx, my, nfile); % collecting mnval
 
-%for i=1:nfile %1st - reference
+% for each time point. first used as reference already
 for i=1:nfile
     % dicom  file
     name = D(i,1).name;
@@ -145,13 +151,13 @@ for i=1:nfile
     [shimvalues,strbuff] = readshimvalues(P);
     %disp([num2str(s.InstanceNumber) ': ' num2str(shimvalues)]);
     % image
-    data = dicomread(info);
+    data = dicomread(info); % size(data) == [658 658]
     %figure(1); imagesc(data); axis image; colormap(gray); drawnow;
     % de-mosaic
     icnt = 1;
     for jj=1:my % row
         for ii=1:mx % column
-            ll = ii + (jj-1)*mx;
+            ll = ii + (jj-1)*mx; % z
             if ll > nz, break; end
 
             ir = (ii-1)*nx+1:ii*nx;
