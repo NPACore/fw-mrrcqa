@@ -56,6 +56,9 @@ gen_plot <- function(d) {
   
   # subset the suspicous values (based on sd)
   suspect <- d_stat|>filter(m %in% c('snr','tsnr','Z'),v_gtsd)
+
+  # current values only, for labeling
+  d_today <- d_stat|>filter(m %in% c('tsnr','Z'),DATE==max(DATE))
   
   # plot lines for all and points for suspect values
   lastday <- format(max(d_stat$DATE), "%m/%d")
@@ -68,13 +71,18 @@ gen_plot <- function(d) {
    filter(mtype!='ignore') |>
    ggplot() +
       aes(x=DATE, y=v_prct, color=m) +
+      geom_vline(data=suspect,aes(xintercept=DATE),
+                 color="darkgray", linetype=3) +
       geom_line() +
       geom_point(data=suspect, color='red') +
       ggrepel::geom_text_repel(data=suspect, aes(label=m, color=NULL)) +
+      ggrepel::geom_label_repel(data=d_today,
+                               aes(label=round(v,1),color=m, nudge_y=50)) +
       facet_grid(mtype~scanner, scale='free_y') +
       labs(x="Day",y="percent from mean", title=paste0("Phantom QC ", lastday),
            subtitle=paste0("flag SNR or Z w/ SD > 3; ", tsnr_string)) +
       theme_bw()
+
 }
 
 main <- function() {
