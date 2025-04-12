@@ -128,4 +128,10 @@ def upload_snr(img_path: str):
 
 
 if __name__ == "__main__":
-    upload_snr("/tmp/snr.png")
+    import sys
+
+    # upload first argument if given (eg '/tmp/snr.png')
+    # otherwise use default
+    to_upload = "PhantomQC.png" if len(sys.argv) < 2 else sys.argv[1]
+
+    upload_snr(to_upload)
