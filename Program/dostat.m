@@ -6,18 +6,22 @@ function [stat] = dostat(pfolder,bfig)
 %
 clear all;
 %}
-
+calc_start_time = tic;
 % load depends if running octave
 % see 'pkg install dicom -forge' or e.g. 'yay -S octave-dicom' (needs GDCM lib)
 if exist('OCTAVE_VERSION', 'builtin') ~= 0; pkg load dicom image; end
 
 % structuring element for erosion
-% NB. octave does not support MATLABs default n=4 (line structuring elements)
-% see mask_structuring_elements.m:
-% se = strel('disk', 3);  % mask (values > 1.2 * mean)
-% sec = strel('disk', 7); % centering mask
-cached_se = fullfile(fileparts(mfilename),'mask_structuring_elements.mat');
-load(cached_se); % se and sec
+try
+  se = strel('disk', 3);  % mask (values > 1.2 * mean)
+  sec = strel('disk', 7); % centering mask
+catch
+  % NB. octave does not support MATLABs default n=4 (line structuring elements)
+  % see mask_structuring_elements.m
+  cached_se = fullfile(fileparts(mfilename),'mask_structuring_elements.mat');
+  load(cached_se, 'sec','se');
+  warning(['using cached se and sec from ', cached_se])
+end
 
 stat = [];
 
@@ -31,11 +35,13 @@ noiseroi2 = [2 12; 83 93];
 noiseroi3 = [83 93; 2 12];
 noiseroi4 = [83 93; 83 93];
 
+% Read Out issues will appear as ghosting on the left or right of the image
 % RO noise ROI <- central range in PE direction (green in Fig. 2D)
 % 20250312 - shift by a pixel
 %ro_noiseroi1 = [13 82; 2 12]; %ro_noiseroi2 = [13 82; 83 93];
 ro_noiseroi1  = [13 82; 1 12];  ro_noiseroi2 = [13 82; 83 94];
 
+% Phase Encoding issues will appear as aliasing in the top or bottom of the image
 % PE noise ROI <- brown area in Fig. 2D
 pe_noiseroi1 = [2 12; 13 82];
 pe_noiseroi2 = [83 93; 13 82];
@@ -97,7 +103,10 @@ pe_noiseroi = zeros(nx,ny);
 pe_noiseroi(pe_noiseroi1(1,1):pe_noiseroi1(1,2), pe_noiseroi1(2,1):pe_noiseroi1(2,2)) = 1;
 pe_noiseroi(pe_noiseroi2(1,1):pe_noiseroi2(1,2), pe_noiseroi2(2,1):pe_noiseroi2(2,2)) = 1;
 
-nfile= 4;
+% 20250409 - BUG! had hardcoded nfile to 4 -- much noisier measures (but ran a lot faster)
+%nfile= 4;
+nfile = length(D);
+
 % Measurement memory
 phansignal = zeros(2, nz,nfile); % 1 - mean; 2 - std
 totnoisesignal = zeros(2, nz,nfile);
@@ -117,6 +126,11 @@ cnt = 1;
 t = [];
 DX = [];
 DY = [];
+
+nmasks = 5; % mask, bg, noise, ro, pe
+roi_area = zeros(mx, my, nfile, nmasks);
+mask_thresh = zeros(mx, my, nfile); % collecting mnval
+
 %for i=1:nfile %1st - reference
 for i=1:nfile
     % dicom  file
@@ -159,6 +173,8 @@ for i=1:nfile
             if cnt==1
                 tmp = DATA(:,:,ll,i);
                 mnval = mean(mean(DATA(:,:,ll,i),1),2);
+                mask_thresh(ii,jj,i) = mnval;
+
                 sdval = std(std(DATA(:,:,ll,i),[],1),[],2);
                 mask = zeros(nx,ny);
     
@@ -229,9 +245,11 @@ for i=1:nfile
             % phantom mask in 3D
             MASK(:,:,ll) = reshape(mask,nx,ny);
 
+            % collect area stats
+            roi_area(ii, jj, i, :) = [sum(maskphan1), sum(maskbg1), sum(noiseroi1), sum(ro_noiseroi1), sum(pe_noiseroi1)];
             icnt = icnt+1;
-        end
-    end
+        end % mx as ii
+    end % my as jj
 
     % Plot dynamic signals
     if bfig==1
@@ -297,11 +315,11 @@ figure(4); p=subplot(1,4,2); p.YLabel.String='Aliasing'; hold on;  histogram(ali
 figure(4); p=subplot(1,4,3); p.YLabel.String='Background'; hold on;  histogram(background,120); hold off;
 figure(4); p=subplot(1,4,4); p.YLabel.String='Noise'; hold on;  h=histogram(noise,120); hold off;
 %}
-H=figure(4); p=subplot(1,5,1); p.YLabel.String='SNR'; hold on; plot(snrx,snrn,'LineWidth',2); set(H,'Name', pfolder); axis([0 500 0 400]); hold off;
-figure(4); p=subplot(1,5,2); p.YLabel.String='Aliasing'; hold on;  plot(aliasx,aliasn,'LineWidth',2); axis([0 40 0 300]);   hold off;
-figure(4); p=subplot(1,5,3); p.YLabel.String='Background Offset'; hold on;  plot(backgroundx,backgroundn,'LineWidth',2); axis([0 40 0 300]);   hold off;
-figure(4); p=subplot(1,5,4); p.YLabel.String='Absolute Noise'; hold on;  plot(noisex,noisen,'LineWidth',2); axis([0 10 0 400]);   hold off;
-figure(4); p=subplot(1,5,5); p.YLabel.String='tSNR'; hold on;  plot(tsnrx,tsnrn,'LineWidth',2);  hold off;
+H=figure(4); p=subplot(1,5,1); ylabel('SNR'); hold on; plot(snrx,snrn,'LineWidth',2); set(H,'Name', pfolder); axis([0 500 0 400]); hold off;
+  figure(4); p=subplot(1,5,2); ylabel('Aliasing'); hold on;  plot(aliasx,aliasn,'LineWidth',2); axis([0 40 0 300]);   hold off;
+  figure(4); p=subplot(1,5,3); ylabel('Background Offset'); hold on;  plot(backgroundx,backgroundn,'LineWidth',2); axis([0 40 0 300]);   hold off;
+  figure(4); p=subplot(1,5,4); ylabel('Absolute Noise'); hold on;  plot(noisex,noisen,'LineWidth',2); axis([0 10 0 400]);   hold off;
+  figure(4); p=subplot(1,5,5); ylabel('tSNR'); hold on;  plot(tsnrx,tsnrn,'LineWidth',2);  hold off;
 end
 
 %% Report
@@ -320,7 +338,15 @@ stat.bkoff = [backgroundn; backgroundx];
 stat.absnoise = [noisen; noisex];
 stat.tsnr = [tsnrn; tsnrx];
 
+% sum of first 2 dims (x-z,y-z), average of time, value per mask, bg, noise, ro, pe
+% TODO: why x-z and y-z ? WF: maybe dont understand the inner most loop
+stat.maskVol_mbnrp = mean(squeeze(sum(squeeze(sum(roi_area,1)),1)));
+stat.mask_thresh_mean = mean(mask_thresh(:));
+stat.mask_thresh_sd = std(mask_thresh(:));
+
 stat.dicominfo = s;
 stat.date = stat.dicominfo.StudyDate;
+
+stat.calc_dur = toc(calc_start_time);
 
 return;

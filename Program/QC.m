@@ -29,8 +29,9 @@ fid = fopen(json_outfile,'w');
 fprintf(fid, '%s', json_str);
 fclose(fid);
 
-image_outfile = fullfile(output_dir, 'bars.png');
-fprintf('saving bar figure to %s\n', image_outfile);
-f = figure('visible','off');
-plotQC(dcm_stats,'', f);
-saveas(f, image_outfile);
+% 20250409 - removed QC plots (bar.png)
+%image_outfile = fullfile(output_dir, 'bars.png');
+%fprintf('saving bar figure to %s\n', image_outfile);
+%f = figure('visible','off');
+%plotQC(dcm_stats,'', f);
+%saveas(f, image_outfile);
