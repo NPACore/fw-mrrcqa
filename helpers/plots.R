@@ -55,7 +55,7 @@ gen_plot <- function(d) {
              v_gtsd = abs(v-v_mean) > 3*v_sd)
   
   # subset the suspicous values (based on sd)
-  suspect <- d_stat|>filter(m %in% c('SNR','tSNR','Z'),v_gtsd)
+  suspect <- d_stat|>filter(m %in% c('snr','tsnr','Z'),v_gtsd)
   
   # plot lines for all and points for suspect values
   lastday <- format(max(d_stat$DATE), "%m/%d")
