@@ -36,7 +36,7 @@ for f in files:
     try:
         stats_idx = [x.name for x in acq.files].index('stats.json')
         version = acq.files[stats_idx].gear_info.version
-        if version.split('.')[2] >= '20250301':
+        if version.split('.')[2] >= '20250408':
             print(f"# SKIP! {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' has version {version}")
             continue
         print(f"# version too old: {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' {version}")
