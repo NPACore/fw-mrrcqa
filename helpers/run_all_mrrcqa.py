@@ -26,7 +26,7 @@ def run_mrrcqa(f: flywheel.models.file_output.FileOutput):
 # Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.snr
 files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~ep2d_bold_.*5min,name=~zip', limit=1e10)
 i = 0
-for f in files:
+for f in reversed(files):
     i += 1
     acq = fw.get(f.parents['acquisition'])
     ses = fw.get(f.parents['session'])
