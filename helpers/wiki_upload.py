@@ -83,8 +83,8 @@ class DokuWiki:
         header = [("Authorization", auth)]
         self.proxy = ServerProxy(self.wiki_url + "lib/exe/xmlrpc.php", headers=header)
 
-        logging.info(f"wiki log in test for {self.user}")
         login = self.proxy.dokuwiki.login(self.user, self.password)
+        logging.info(f"wiki log in test for {self.user}: '{login}'")
         assert login
 
     def upload_file(self, local_path: str, wiki_name=None, binary=True):
@@ -109,7 +109,8 @@ class DokuWiki:
         if binary:
             data = Binary(file_data)
         else:
-            data = base64.b64encode(file_data).decode("utf-8")
+            #data = base64.b64encode(file_data.encode()) #.decode("utf-8")
+            data = file_data
 
         # ow set to overwrite existing file on wiki side
         res = self.proxy.wiki.putAttachment(wiki_name, data, {"ow": True})

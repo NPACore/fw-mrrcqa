@@ -33,9 +33,19 @@ upload_img <- function(img_path){
     up <- import("wiki_upload")
     up$upload_snr(img_path)
 }
+upload_csv <- function(d, wiki_name){
+    up <- import("wiki_upload")
+    dw <- up$DokuWiki("http://rad.pitt.edu/wiki/")
 
+    tempcsv <- tempfile("PhantomQC", fileext = c(".csv"))
+    d_stats_wide <- d |> long_stats() |> stats_to_wide()
+    write.csv(d_stats_wide, tempcsv, row.names=F)
+    tryCatch(dw$upload_file(tempcsv, wiki_name=wiki_name, binary=FALSE),
+             finally=\() unlink(tempcsv))
+}
 
-gen_plot <- function(d) {
+long_stats <- function(d){
+
   # had columns for each measure. want row unique to day+scanner+measure
   d_long <- d |>
       mutate(DATE=lubridate::ymd(DATE)) |>
@@ -45,7 +55,7 @@ gen_plot <- function(d) {
                  grepl('ALIAS|SNR', m, ignore.case=T) ~ "snr",
                  grepl('^(X|Y|Z|B0)$', m) ~ "shim",
                  .default = 'ignore'))
-  
+
   # use v_prct for plotting and v greater than 3*SD for highlighting
   d_stat <- d_long |>
       group_by(scanner, m) |>
@@ -53,7 +63,21 @@ gen_plot <- function(d) {
              v_sd  = sd(v, na.rm=T),
              v_prct = (v - v_mean)/v_mean * 100,
              v_gtsd = abs(v-v_mean) > 3*v_sd)
-  
+}
+stats_to_wide <- function(d_stats){
+   d_stats|>
+     filter(m!='X.1') |>
+     pivot_wider(id_cols=c('DATE','scanner'),
+                 names_from=c('m'),
+                 values_from=matches('^v'),
+                 values_fn=first) |>
+    rename_with(\(x) gsub('^v_','',x))
+}
+
+gen_plot <- function(d) {
+
+  d_stats <- long_stats(d)
+
   # subset the suspicous values (based on sd)
   suspect <- d_stat|>filter(m %in% c('snr','tsnr','Z'),v_gtsd)
 
@@ -77,7 +101,7 @@ gen_plot <- function(d) {
       geom_point(data=suspect, color='red') +
       ggrepel::geom_text_repel(data=suspect, aes(label=m, color=NULL)) +
       ggrepel::geom_label_repel(data=d_today,
-                               aes(label=round(v,1),color=m, nudge_y=50)) +
+                               aes(label=round(v,1),color=m)) +
       facet_grid(mtype~scanner, scale='free_y') +
       labs(x="Day",y="percent from mean", title=paste0("Phantom QC ", lastday),
            subtitle=paste0("flag SNR or Z w/ SD > 3; ", tsnr_string)) +
@@ -87,6 +111,8 @@ gen_plot <- function(d) {
 
 main <- function() {
    d <- read_flywheel()
+   upload_csv(d, 'PhantomQC.csv')
+
    p <- gen_plot(d)
    ggsave(p, file='PhantomQC.png', width=14, height=3.57)
    upload_img('PhantomQC.png')
