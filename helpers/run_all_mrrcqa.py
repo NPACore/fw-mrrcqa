@@ -46,6 +46,13 @@ for f in reversed(files):
             print(f"# {ses.label} has shim tag")
             continue
 
+    ## is this acquistions already running?
+    #jobs[0].parents.acquisition
+    running = fw.jobs.find(f'state=running,gear_info.name=~mrrcqa,parents.acquisition={acq.id}')
+    if len(running) > 0:
+        print(f"# SKIP! {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' running as {running[0].id}")
+        continue
+
     #if 'stats.json' in [x.name for x in acq.files]:
     #    print(f"# {ses.label} {acq.label} has stats.json")
     #    continue
