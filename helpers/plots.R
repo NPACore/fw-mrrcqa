@@ -76,7 +76,7 @@ stats_to_wide <- function(d_stats){
 
 gen_plot <- function(d) {
 
-  d_stats <- long_stats(d)
+  d_stat <- long_stats(d)
 
   # subset the suspicous values (based on sd)
   suspect <- d_stat|>filter(m %in% c('snr','tsnr','Z'),v_gtsd)

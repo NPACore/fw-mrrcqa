@@ -31,6 +31,8 @@ for f in reversed(files):
     acq = fw.get(f.parents['acquisition'])
     ses = fw.get(f.parents['session'])
 
+    ## TODO: quit if acq date is > 5 from today when told to care about that (environ, argv?)
+
     print(f"# {i}/{len(files)} running for {ses.subject.code} {ses.label} {f.name}")
     # can skip if a sufficnetly new gear has been run
     try:
@@ -47,7 +49,7 @@ for f in reversed(files):
             continue
 
     ## is this acquistions already running?
-    #jobs[0].parents.acquisition
+    #  TODO: get all jobs first and then 'acq.id in [x.parents.acquisition in jobs]' instead of search each time?
     running = fw.jobs.find(f'state=running,gear_info.name=~mrrcqa,parents.acquisition={acq.id}')
     if len(running) > 0:
         print(f"# SKIP! {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' running as {running[0].id}")
