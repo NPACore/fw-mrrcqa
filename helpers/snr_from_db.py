@@ -79,7 +79,9 @@ class SNR:
         :param fname: csv output to write
         :returns: None -- expects R to reuse fname given
         """
-        self.all_shim_and_snr().to_csv(fname)
+        d = self.all_shim_and_snr()
+        logging.info("Read in all snr. last date: %s", d.date.max())
+        d.to_csv(fname)
 
     def all_snr(self) -> pd.DataFrame:
         """
