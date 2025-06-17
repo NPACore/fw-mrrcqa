@@ -23,11 +23,12 @@ case "$(uname -a)" in
  *Zeus*)
    # 20250407 - use guix
    # likely in /raidzeus/src/fw-mrrcqa/helpers
-   export GUIX_PROFILE=/home/foranw/.guix-profile
+   export GUIX_PROFILE=${HOME:=/home/foranw}/.guix-profile
    source $GUIX_PROFILE/etc/profile
-   export PATH="/home/foranw/.config/guix/current/bin:$PATH"
+   export PATH="$GUIX_PROFILE/bin:$PATH"
+   export R_LIBS_USER=$HOME/R
    guix shell \
-     glibc@2.39 r r-ggrepel  r-reticulate r-dplyr r-tidyr r-ggplot2 -- \
+     glibc@2.39 r r-ggrepel r-pacman r-reticulate r-dplyr r-tidyr r-ggplot2 r-lubridate r-lubridate r-cowplot -- \
      ./plots.R;;
  *) # *crc*
    [[ $(uname -a) =~ crc ]] && module load python/ondemand-jupyter-python3.11 r
