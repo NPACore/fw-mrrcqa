@@ -88,7 +88,7 @@ gen_plot <- function(d) {
   # plot lines for all and points for suspect values
   lastday <- format(max(d_stat$DATE), "%m/%d")
   tsnr_string <- d_stat |>
-    filter(DATE == max(d_stat$DATE), m=='tsnr') |>
+    filter(format(DATE, "%Y%m%d") == max(format(d_stat$DATE, "%Y%m%d")), m=='tsnr') |>
     with(paste(scanner,round(v,1), sep=":", collapse=", ")) |>
     gsub(pattern='Prisma', replacement='P')
 
@@ -114,6 +114,7 @@ gen_plot <- function(d) {
 main <- function() {
    d <- read_flywheel()
    upload_csv(d, 'PhantomQC.csv')
+   write.csv(d,'/tmp/tsnr.csv',row.names=F)
 
    p <- gen_plot(d)
    ggsave(p, file='PhantomQC.png', width=14, height=3.57)
