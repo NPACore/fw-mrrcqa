@@ -51,7 +51,7 @@ class SNR:
         snr = [
             {
                 **s.info, # snr tsnr alias bkoff shim
-                "date": s.subject.created,
+                "date": s.created, #s.subject.created, 20250625: see same change in all_snr
                 "scanner": self.p_lookup.get(s.project),
             }
             for s in qc_sess
@@ -92,7 +92,8 @@ class SNR:
         qc_sess = self.all_qc_sess()
         snr = [
             {
-                "date": s.subject.created,
+                # 20250625: was using 's.subject.created' but have multiple per day. get full datetime
+                "date": s.created,
                 "snr": s.info.get("snr"),
                 "scanner": self.p_lookup.get(s.project),
             }

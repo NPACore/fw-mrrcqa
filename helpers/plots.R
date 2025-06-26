@@ -23,8 +23,9 @@ read_flywheel <- function(){
     # to match excel, DATE only has day (no time). no index
     d <- read.csv(fname) |>
         select(-X) |>
-        rename(DATE=date) |>
-        mutate(DATE=gsub(' .*','',DATE))
+        rename(DATE=date)
+        # 20250625 - have more than one per day. give up on matching excel by date
+        # |> mutate(DATE=gsub(' .*','',DATE))
 
     unlink(fname)
     return(d)
@@ -48,7 +49,7 @@ long_stats <- function(d){
 
   # had columns for each measure. want row unique to day+scanner+measure
   d_long <- d |>
-      mutate(DATE=lubridate::ymd(DATE)) |>
+      mutate(DATE=lubridate::ymd_hms(DATE)) |>
       gather('m','v',-DATE, -scanner) |>
       # also have a bunch of values we can ingore for now
       mutate(mtype=case_when(
@@ -103,7 +104,8 @@ gen_plot <- function(d) {
       ggrepel::geom_label_repel(data=d_today,
                                aes(label=round(v,1),color=m)) +
       facet_grid(mtype~scanner, scale='free_y') +
-      labs(x="Day",y="percent from mean", title=paste0("Phantom QC ", lastday),
+      labs(x="Day",y="percent from mean",
+           title=paste0("Phantom QC ", lastday, format(now()," (gen %Y-%m-%d %H:%M)")),
            subtitle=paste0("flag SNR or Z w/ SD > 3; ", tsnr_string)) +
       theme_bw()
 
