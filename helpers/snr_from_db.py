@@ -118,9 +118,21 @@ def plot_snr(snr_df: pd.DataFrame):
     # plt.margins(.3,tight=True)
 
 
-def main(upload=False, png=None):
+def main(upload=False, png=None, csv=None):
+    """
+    Read all values stored in flywheel and either
+    1. plot :py:func:`plot_snr`
+      a. show   (no file created)
+      b. upload (temporary file on disk)
+      c. save  (perminate file, not uploaded)
+    2. write csv using py:func:`all_shim_and_snr_csv`
+    """
 
     snr = SNR()
+    if csv:
+        snr.all_shim_and_snr_csv(csv)
+        return
+
     snr_df = snr.all_snr()
     p = plot_snr(snr_df)
     # plt.show()
@@ -146,7 +158,8 @@ if __name__ == "__main__":
     parse = argparse.ArgumentParser(
         description="Plot or upload FW's DB SNR value from QC Phantom"
     )
-    parse.add_argument("-u", "--upload", action="store_true", default=False)
-    parse.add_argument("--png", default=None)
+    parse.add_argument("-u", "--upload", action="store_true", default=False, help="upload plot to wiki")
+    parse.add_argument("--png", default=None, help="save png instead of showing")
+    parse.add_argument("--csv", default=None, help="write csv instead of plotting")
     args = parse.parse_args()
-    main(args.upload, args.png)
+    main(args.upload, args.png, args.csv)
