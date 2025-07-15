@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 import argparse
 from datetime import datetime
 
@@ -13,7 +14,7 @@ import flywheel
 DRYRUN = os.environ.get("DRYRUN")
 fw = flywheel.Client()
 mrrcqa_gear = fw.lookup("gears/mrrcqa")
-
+print(f"# starting {datetime.now()} (DRYRUN={DRYRUN})")
 def run_mrrcqa(f: flywheel.models.file_output.FileOutput):
     """Configure and run MRRCQA gear"""
     config = {"write_db": True}
@@ -25,11 +26,18 @@ def run_mrrcqa(f: flywheel.models.file_output.FileOutput):
 
 # Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.snr
 files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~ep2d_bold_.*5min,name=~zip', limit=1e10)
+print(f"# {datetime.now()} found {len(files)} acq.label ep2d_bold zip files")
 i = 0
 for f in reversed(files):
     i += 1
+
     acq = fw.get(f.parents['acquisition'])
     ses = fw.get(f.parents['session'])
+
+    # fw.get(f.parents['acquisition']).label #'ep2d_bold_p2_s2_5min'
+    #f.info.get('SeriesDescription')         #'ep2d_bold_p2_s2_5min'
+    if re.search('rfnoise', acq.label):
+        print(f"SKIP: {f.acquisition.label} is rfnoise")
 
     ## TODO: quit if acq date is > 5 from today when told to care about that (environ, argv?)
 
