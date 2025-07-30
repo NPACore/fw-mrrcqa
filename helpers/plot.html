@@ -1,0 +1,49 @@
+<html>
+   <head><title>QA Plot</title></head>
+   <script src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+   <script src="https://cdn.jsdelivr.net/npm/vega-lite@6"></script>
+   <script src="https://cdn.jsdelivr.net/npm/vega-embed@7"></script>
+
+   <body>
+      <div id="vega_chart"></div>
+
+      <script>
+         vegaEmbed('#vega_chart', {
+            $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+            description: "Multi-line timeseries per scanner and variable.",
+            data: {
+               url: "phantomqc.csv",
+               format: { type: "csv" }
+            },
+            transform: [
+               { calculate: "toDate(datum.DATE)", as: "parsed_date" }
+            ],
+            facet: {
+               column: { field: "variable", type: "nominal" },
+               row: { field: 'scanner', type: 'nominal' }},
+            resolve: { scale: { y: "independent" } },
+            spec: {
+               mark: {type: "line", point: true},
+               encoding: {
+                  x: { field: "parsed_date", type: "temporal", title: "Date" },
+                  y: { field: "value", type: "quantitative",  scale: {zero: false }},
+                  color: { field: "scanner", type: "nominal" },
+                  tooltip: [
+                     { field: "scanner", type: "nominal" },
+                     { field: "value", type: "quantitative" },
+                     { field: "parsed_date", type: "temporal" }
+                  ]
+               }
+            },
+            transform: [
+               {
+                  fold: ["tsnr", "Z"], // TODO: add tempurature
+                  as: ["variable", "value"]
+               },
+               { calculate: "toDate(datum.DATE)", as: "parsed_date" },
+               { "type": "filter", "expr": "datum.parsed_date >= timeOffset('month', now(), -6)"}
+            ]
+
+         });
+      </script>
+</html>
