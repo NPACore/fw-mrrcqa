@@ -23,18 +23,45 @@ read_flywheel <- function(){
     # to match excel, DATE only has day (no time). no index
     d <- read.csv(fname) |>
         select(-X) |>
-        rename(DATE=date)
+        rename(DATE=date) |>
+        arrange(-DATE, scanner)
         # 20250625 - have more than one per day. give up on matching excel by date
         # |> mutate(DATE=gsub(' .*','',DATE))
 
+    # names are
+    # c("X.1", "snr", "alias", "bkoff", "tsnr", "DATE", "scanner", "test", "Y", "Z", "X2", "Y2", "Z2", "XY", "S2", "B0")
     unlink(fname)
     return(d)
+}
+
+#' Pull tempurature from excel and merge with data
+#' @param d dataframe with 'DATE' and 'scanner' columns. likely from read_flywheel()
+#' @return dataframe with new 'Temp' column
+add_temp <- function(d){
+    tempr <- readxl::read_excel('tempurature_log.xlsx') # DATE `PRISMA 1` `PRISMA 2` PRISMA 3`
+    tmpr_day <- tempr |>
+        rename_with(\(x) gsub('RISMA ','risma',x)) |>
+        mutate(day=gsub(' .*','',DATE)) |>
+        # TODO: will want to grab Prisma|7T when terra x comes online?
+        select(day, matches('Prisma'))  |>
+        pivot_longer(-day, names_to='scanner', values_to='Temp')
+        # columns: day, scanner, Temp
+
+    d_tmpr <- d |>
+        mutate(day=gsub(' .*','',DATE)) |>
+        merge(tmpr_day, by=c('day','scanner'), all.x=T) |>
+        select(-day)
 }
 upload_img <- function(img_path){
     up <- import("wiki_upload")
     up$upload_snr(img_path)
 }
-upload_csv <- function(d, wiki_name){
+
+#' upload csv to wiki using wiki_upload.py via reticulate
+#' creates a temporary file that is removed
+#' @param d row per QA likely from read_flywheel() |> add_temp()
+#' @param wiki_name upload file name
+upload_csv <- function(d, wiki_name='PhantomQC.csv'){
     up <- import("wiki_upload")
     dw <- up$DokuWiki("http://rad.pitt.edu/wiki/")
 
@@ -53,7 +80,7 @@ long_stats <- function(d){
       gather('m','v',-DATE, -scanner) |>
       # also have a bunch of values we can ingore for now
       mutate(mtype=case_when(
-                 grepl('ALIAS|SNR', m, ignore.case=T) ~ "snr",
+                 grepl('ALIAS|SNR|Temp', m, ignore.case=T) ~ "snr",
                  grepl('^(X|Y|Z|B0)$', m) ~ "shim",
                  .default = 'ignore'))
 
@@ -111,8 +138,11 @@ gen_plot <- function(d) {
 
 }
 
+#' main function run if file executed as script
+#' fetch FW data. uploads row per QA measure csv file to wiki. plots. uploads plot
 main <- function() {
-   d <- read_flywheel()
+   d_fw <- read_flywheel()
+   d <- add_temp(d_fw)
    upload_csv(d, 'PhantomQC.csv')
    write.csv(d,'/tmp/tsnr.csv',row.names=F)
 
@@ -121,6 +151,7 @@ main <- function() {
    upload_img('PhantomQC.png')
 }
 
+#' dead code. used to compare matlab excel output with flywheel(octave)/R/python generated
 compare_excel_fw <- function(d, d.x) {
    x <- d.x |> select(DATE,tsnr=tSNR,scanner) |> mutate(from='excel')
    f<- d|>select(DATE,tsnr,scanner)|>mutate(from='fw')
