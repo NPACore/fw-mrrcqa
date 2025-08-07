@@ -23,8 +23,7 @@ read_flywheel <- function(){
     # to match excel, DATE only has day (no time). no index
     d <- read.csv(fname) |>
         select(-X) |>
-        rename(DATE=date) |>
-        arrange(-DATE, scanner)
+        rename(DATE=date)
         # 20250625 - have more than one per day. give up on matching excel by date
         # |> mutate(DATE=gsub(' .*','',DATE))
 
@@ -140,15 +139,22 @@ gen_plot <- function(d) {
 
 #' main function run if file executed as script
 #' fetch FW data. uploads row per QA measure csv file to wiki. plots. uploads plot
+#' Use NOUPLOAD=1 to disable uploading (NB unset NOUPLOAD to undo; NOUPLOAD=0 still disables)
 main <- function() {
    d_fw <- read_flywheel()
    d <- add_temp(d_fw)
-   upload_csv(d, 'PhantomQC.csv')
-   write.csv(d,'/tmp/tsnr.csv',row.names=F)
+   # dont upload if NOUPLOAD environment variable is set
+   upload <- length(Sys.getenv("NOUPLOAD"))!=0
+
+   # upload to wiki
+   if(upload) upload_csv(d, 'PhantomQC.csv')
+   # save a local copy
+   write.csv(d,'PhantomQC.csv',row.names=F)
 
    p <- gen_plot(d)
+   # like above: save local copy and upload to wiki
    ggsave(p, file='PhantomQC.png', width=14, height=3.57)
-   upload_img('PhantomQC.png')
+   if(upload) upload_img('PhantomQC.png')
 }
 
 #' dead code. used to compare matlab excel output with flywheel(octave)/R/python generated

@@ -19,8 +19,9 @@ source .creds # set WIKIUSER and WIKIPASS
 # DRYRUN=1 ./run_all_mrrcqa.py
 #./snr_from_db.py -u > snr_wiki.log 2>&1
 
+make tempurature_log.xlsx
 case "$(uname -a)" in
- *Zeus*)
+ *Zeus*|*cerebro2*)
    # 20250407 - use guix
    # likely in /raidzeus/src/fw-mrrcqa/helpers
    export GUIX_PROFILE=${HOME:=/home/foranw}/.guix-profile
@@ -28,7 +29,7 @@ case "$(uname -a)" in
    export PATH="$GUIX_PROFILE/bin:$PATH"
    export R_LIBS_USER=$HOME/R
    guix shell \
-     glibc@2.39 r r-ggrepel r-pacman r-reticulate r-dplyr r-tidyr r-ggplot2 r-lubridate r-lubridate r-cowplot -- \
+     glibc@2.39 r r-ggrepel r-pacman r-reticulate r-dplyr r-tidyr r-ggplot2 r-lubridate r-lubridate r-cowplot r-readxl -- \
      ./plots.R;;
  *) # *crc*
    [[ $(uname -a) =~ crc ]] && module load python/ondemand-jupyter-python3.11 r

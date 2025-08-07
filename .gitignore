@@ -13,3 +13,9 @@ example/
 .venv/
 .creds
 __pycache__/
+PhantomQC.csv
+PhantomQC.png
+.R*
+tempurature_log.xlsx
+snr_wiki.log
+*.zip
