@@ -65,5 +65,34 @@ if __name__ == "__main__":
     res = fft_acqdir('./2QA20250804_PM/1.3.12.2.1107.5.2.43.167046.2025080414155450338638503.0.0.0.dicom/')
     res_abs = np.abs(res)
     avg = np.mean(res_abs)
-    np.stack([np.argmax(res_abs,1)-1024,
-            np.max(res_abs,1)/avg],1)
+    maxs = np.stack([np.argmax(res_abs,1)-1024,
+                     np.max(res_abs,1)/avg],1)
+
+    from matplotlib import pyplot as plt
+    mag_i = np.argsort(maxs[:,1]).tolist()
+    arg_i = np.argsort(maxs[:,0]).tolist()
+
+    low = 1024 - 50 # + int(np.min(maxs[:,0]))
+    hig = 1024 + 50 # + int(np.max(maxs[:,0]))
+
+    x=np.arange(-50,50)+1024
+
+    plt.suptitle('FID FFT @ mid -/+ 50')
+    plt.subplot(2,2,1)
+    plt.title('ch as read in')
+    plt.imshow(res_abs[:,low:hig])
+
+    plt.subplot(2,2,2)
+    plt.title('ch order by max mag')
+    plt.imshow(res_abs[mag_i,low:hig])
+
+
+    plt.subplot(2,2,3)
+    plt.title('ch normlaized')
+    plt.imshow(res_abs[:,low:hig] / np.max(res_abs,1).reshape(64,1))
+
+    plt.subplot(2,2,4)
+    plt.title('normalized and ordered by pos')
+    plt.imshow(res_abs[arg_i,low:hig] / np.max(res_abs[arg_i,:],1).reshape(64,1))
+    #plt.show()
+    plt.savefig('fft_example.png')
