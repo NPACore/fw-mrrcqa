@@ -62,7 +62,11 @@ upload_img <- function(img_path){
 #' @param wiki_name upload file name
 upload_csv <- function(d, wiki_name='PhantomQC.csv'){
     up <- import("wiki_upload")
-    dw <- up$DokuWiki("http://rad.pitt.edu/wiki/")
+    wiki_root <- Sys.getenv("WIKIROOT")
+    # without this, python code would also default to WIKIROOT and error if empty
+    if(!nzchar(wiki_root)) wiki_root <- "http://rad.pitt.edu/wiki/"
+
+    dw <- up$DokuWiki(wiki_root)
 
     tempcsv <- tempfile("PhantomQC", fileext = c(".csv"))
     d_stats_wide <- d |> long_stats() |> stats_to_wide()
