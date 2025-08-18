@@ -40,13 +40,18 @@ class DokuWiki:
     proxy = None
 
     def __init__(
-        self, wiki_url: str, user: Optional[str] = None, password: Optional[str] = None
+        self, wiki_url: Optional[str], user: Optional[str] = None, password: Optional[str] = None
     ):
         """
         :param wiki_url: root url of wiki. Trailing slash important
         :param user: wiki user name
         :param password: matching password
         """
+        if not wiki_url:
+            wiki_url = os.environ['WIKIROOT']
+        if not wiki_url:
+            raise Exception("no wiki location? use WIKIROOT environmental variable")
+
         self.wiki_url = wiki_url
         self.set_creds(user, password)  # set user and password
         self.login()  # set `proxy` XML-RPC interface
@@ -59,8 +64,10 @@ class DokuWiki:
         :sideffect: will maybe update self.user and self.password
                     and will raise an Exception if they are not set
         """
-        if not self.user:
-            self.user = os.environ.get("WIKIUSER", "npac")
+        if not user:
+            user = os.environ.get("WIKIUSER", "npac")
+        self.user = user
+
         if not self.password:
             self.password = (
                 os.environ.get("WIKIPASS")
