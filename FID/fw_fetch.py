@@ -8,6 +8,20 @@
 #     "seaborn",
 # ]
 # ///
+"""
+This script pulls all "qa_fid" from QA studies.
+Study name describes Scanner (Prisma 1 to 3).
+
+We want to build a template spectrum for each coil channel (64)
+for each scanner (3). And test a given acquisition against that template.
+
+A low correlation between an individual channel and it's template may indicate a problem.
+Other useful information may be in the max and postiion of max within the spectrum.
+
+.. code::
+
+    uv run --script ./fw_fetch.py
+"""
 import flywheel
 import os.path
 import numpy as np

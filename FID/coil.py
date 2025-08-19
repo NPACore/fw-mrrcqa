@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Read coil spectrum from siemens Common Syngo Architecture private field in DICOM.
+
+Acquistion is very short Free Induction Decay, creates a single dicom per channel. Flywheel exports all 64 dcms within a single zip file.
+"""
 
 import pydicom
 import re
