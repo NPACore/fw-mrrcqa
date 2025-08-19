@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import pydicom
+import re
 from glob import glob
 import numpy as np
 from nibabel.nicom import csareader
+from zipfile import ZipFile
 
 def read_item(csa: dict, el: str):
     """extract CSA item from csareader dict
@@ -18,13 +20,12 @@ def read_item(csa: dict, el: str):
         return None
     return valdict['items'][0]
 
-def fft_signal(f: str) -> np.ndarray:
+def fft_signal(dcm: pydicom.pydicom) -> np.ndarray:
     """
     extract FFT from FID acquisition in dicom's private CSA header
     :param f: input dicom file
     :return: np.complex128 (2048,)
     """
-    dcm = pydicom.dcmread(f)
     csa_fft = dcm.get_item((0x7fe1,0x1010))
     # was bytes. uint8 len=16384. should be single w/len 4096
     raw = np.frombuffer(csa_fft.value, dtype='<f4')
@@ -53,22 +54,38 @@ def fft_acqdir(dpath: str, patt="*.dcm") -> np.ndarray:
     :param patt: dicom file name patter. examples: 'MR.*', '*.dcm', etc
     :return: fft_signal() on each dicom: np.complex128 (64, 2048)
     """
-    files = glob(f'{dpath}/{patt}')
-    assert len(files) == 64
+    if re.search('.zip$', dpath):
+        res = np.zeros([64,2048],dtype='complex64')
+        with ZipFile(dpath) as zf:
+            if not len(zf.filelist) == 64:
+                raise Exception(f"{len(zf.filelist)} dcm files instead of expected 64")
+            for i,entry in enumerate(zf.filelist):
+                with zf.open(entry.filename) as fh:
+                    fft = fft_signal(pydicom.dcmread(fh))
+                    assert(fft.shape[0]) == 2048
+                    res[i,:] = fft
+    else:
+        files = glob(f'{dpath}/{patt}')
+        assert len(files) == 64
+        res = np.stack([fft_signal(pydicom.dcmread(f)) for f in files])
 
-    res = np.stack([fft_signal(f) for f in files])
     # 64 channels worth of data
     assert res.shape == (64, 2048)
     return res
 
-if __name__ == "__main__":
-    res = fft_acqdir('./2QA20250804_PM/1.3.12.2.1107.5.2.43.167046.2025080414155450338638503.0.0.0.dicom/')
+def norm_subset(coil_2d):
+    res_abs = np.abs(coil_2d)
+    low = 1024 - 50 # + int(np.min(maxs[:,0]))
+    hig = 1024 + 50 # + int(np.max(maxs[:,0]))
+    return res_abs[:,low:hig] / np.max(res_abs,1).reshape(64,1)
+
+def plot_fft(res, save_as):
+    from matplotlib import pyplot as plt
     res_abs = np.abs(res)
     avg = np.mean(res_abs)
     maxs = np.stack([np.argmax(res_abs,1)-1024,
                      np.max(res_abs,1)/avg],1)
 
-    from matplotlib import pyplot as plt
     mag_i = np.argsort(maxs[:,1]).tolist()
     arg_i = np.argsort(maxs[:,0]).tolist()
 
@@ -95,4 +112,9 @@ if __name__ == "__main__":
     plt.title('normalized and ordered by pos')
     plt.imshow(res_abs[arg_i,low:hig] / np.max(res_abs[arg_i,:],1).reshape(64,1))
     #plt.show()
-    plt.savefig('fft_example.png')
+    if save_as:
+        plt.savefig(save_as)
+
+if __name__ == "__main__":
+    res = fft_acqdir('./2QA20250804_PM/1.3.12.2.1107.5.2.43.167046.2025080414155450338638503.0.0.0.dicom/')
+    plot_fft(res, 'fft_example.png')
