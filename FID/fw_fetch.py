@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "flywheel-sdk",
+#     "nibabel",
+#     "pydicom",
+#     "seaborn",
+# ]
+# ///
 import flywheel
 import os.path
 import numpy as np
