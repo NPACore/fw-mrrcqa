@@ -1,4 +1,4 @@
-function [stat] = dostat(pfolder,bfig)
+function [stat] = dostat(pfolder,bfig, outdir)
 % function [stat] = dostat(pfolder,bfig)
 
 %{
@@ -120,6 +120,15 @@ noisesignal = zeros(2, nz,nfile);
 ro_noisesignal = zeros(2, nz,nfile);
 pe_noisesignal = zeros(2, nz,nfile);
 aliasnoisesignal = zeros(2, nz,nfile);
+
+% Indexing
+idx.phan_erode = 1;
+idx.bg = 2;
+idx.noise = 3;
+idx.readout = 4;
+idx.phaseenc = 5;
+idx.alias = 6;
+ALL_MASK = zeros(nx,ny,nz, 6);
 
 % Memory
 DATA = zeros(nx,ny,nz,nfile);
@@ -251,6 +260,17 @@ for i=1:nfile
             % phantom mask in 3D
             MASK(:,:,ll) = reshape(mask,nx,ny);
 
+            % yet another mask. not touching first to ensure no change in output.
+            % MASK is anywhere phantom is. at ALL_MASK(:,:,:,1) is eroded
+            if ~isempty(getenv('QA_SAVE_IMAGES'))
+               ALL_MASK(:,:,ll, idx.phan_erode) = reshape(maskphan1, nx,ny);
+               ALL_MASK(:,:,ll, idx.bg)         = reshape(maskbg1,nx,ny);
+               ALL_MASK(:,:,ll, idx.alias)      = reshape(maskali1,nx,ny);
+               ALL_MASK(:,:,ll, idx.noise)      = reshape(noiseroi1,nx,ny);
+               ALL_MASK(:,:,ll, idx.readout)    = reshape(ro_noiseroi1,nx,ny);
+               ALL_MASK(:,:,ll, idx.phaseenc)   = reshape(pe_noiseroi1,nx,ny);
+            end
+
             % collect area stats
             roi_area(ii, jj, i, :) = [sum(maskphan1), sum(maskbg1), sum(noiseroi1), sum(ro_noiseroi1), sum(pe_noiseroi1)];
             icnt = icnt+1;
@@ -281,21 +301,26 @@ for i=1:nfile
 end
 
 %% Saving
-%
-if 0
+% 20250821 - env variable guard
+if ~isempty(getenv('QA_SAVE_IMAGES'))
     maskphan = mask;
     maskbg = 1 - mask;
     mask_noiseroi = noiseroi;
     mask_ro_noiseroi = ro_noiseroi;
     mask_pe_noiseroi = pe_noiseroi;
-    matfname = [pfolder '/sigstat.mat'];
+    matfname = fullfile(outdir, 'sigstat.mat');
+    fprintf('# saving %s\n', matfname)
     save(matfname, 'DATA','t',...
         'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
-        'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal');
+        'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal', ...
+        'roi_area', 'MASK','ALL_MASK');
+else
+    fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
 end
 
 %% Statistics
 %
+% signal size is (2, 46, 200) - mean&sd measure per slice per timepoint
 snr = phansignal(1,:)./noisesignal(2,:);
 alias = aliasnoisesignal(1,:)./noisesignal(2,:);
 background = totnoisesignal(1,:)./noisesignal(2,:);

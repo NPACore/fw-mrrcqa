@@ -14,7 +14,7 @@ else
 end
 
 %% Main
-dcm_stats = dostat(dicom_dir, 0);
+dcm_stats = dostat(dicom_dir, 0, output_dir);
 
 %% Write ouputs
 % NB. will not make recursive output dir?
@@ -30,8 +30,11 @@ fprintf(fid, '%s', json_str);
 fclose(fid);
 
 % 20250409 - removed QC plots (bar.png)
-%image_outfile = fullfile(output_dir, 'bars.png');
-%fprintf('saving bar figure to %s\n', image_outfile);
-%f = figure('visible','off');
-%plotQC(dcm_stats,'', f);
-%saveas(f, image_outfile);
+% 20250821 - use env var guard
+if ~isempty(getenv('QA_SAVE_IMAGES'))
+  image_outfile = fullfile(output_dir, 'bars.png');
+  fprintf('saving bar figure to %s\n', image_outfile);
+  f = figure('visible','off');
+  plotQC(dcm_stats,'', f);
+  saveas(f, image_outfile);
+end

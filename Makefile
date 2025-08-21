@@ -28,7 +28,7 @@ input/QA_PRISMA3QA_20240809_180204_160000/: | input/
 
 example: outputs/stats.json
 outputs/stats.json: $(wildcard Program/*m) input/trunc/
-	Program/QC.m input/trunc
+	QA_SAVE_IMAGES=1 Program/QC.m input/trunc
 
 # copy only 4 over for quick testing
 input/trunc/: input/QA_PRISMA3QA_20240809_180204_160000/
