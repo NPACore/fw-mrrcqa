@@ -34,7 +34,7 @@ outputs/ants/snr.tsv: input/trunc/ QA_ants.bash
 
 # copy only 4 over for quick testing
 input/trunc/: input/QA_PRISMA3QA_20240809_180204_160000/
-	mkdir $@
+	mkdir -p $@
 	find input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/ -type f -iname '*IMA' |head -n 5|xargs cp -t $@ 
 
 input/phantom_dicom/trunc.zip: input/trunc/
@@ -46,6 +46,11 @@ test: Program/readshimvalues.m Program/find_all_dicoms.m input/trunc/
 
 test-docker: .docker
 	docker run -v $(PWD)/input:/flywheel/input:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"
+
+local_bin/:
+	mkdir -p $@
+	cp `which antsRegistrationSyN.sh` `which antsApplyTransforms` `which ANTS` `which antsRegistration` `which PrintHeader` $@
+	docker run  afni/afni_make_build:AFNI_25.2.08 bash -c "cd /opt/afni/install/; tar -cvf- 3dinfo 3dROIstats 3dmaskave 3dTstat 3dcalc libf2c.so libmri.so" | sed 1d | tar -C local_bin/ -xf-
 
 %/:
 	mkdir -p $@
