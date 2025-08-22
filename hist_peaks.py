@@ -9,7 +9,7 @@ import sys
 from nibabel import load
 import numpy as np
 #(epi_file, tsnr_file, mask_file) = sys.argv[1:3]
-(epi_file, tsnr_file, mask_file) = ('./input/bullet_phantom_epi.nii.gz', '/tmp/tsnr/tsnr.nii.gz','/tmp/tsnr/mask.nii.gz')
+(epi_file, tsnr_file, mask_file) = ('./input/bullet_phantom_epi.nii.gz', '/tmp/tsnr/tsnr.nii.gz','input/qa_masks.nii')
 epi = load(epi_file)
 tsnr = load(tsnr_file)
 mask = load(mask_file)
@@ -25,17 +25,20 @@ def hist_peak_val(arr, roi_mask=None):
     biggest_bin = np.argmax(n_in_bin)
     return val[biggest_bin]
 
+def tsv_dict(dt: dict):
+    print("\n".join([f"{k}\t{v}" for (k,v) in dt.items()]))
+
 tsnr_pk = {}
 for roi_i,region in enumerate(regions):
     roi_mask = mask.dataobj[:,:,:, roi_i]
     tsnr_pk[region] = hist_peak_val(tsnr.dataobj, roi_mask)
-print(tsnr_pk)
+tsv_dict(tsnr_pk)
 
 snr_pk = {}
 noise_mask = mask.dataobj[:,:,:, regions.index('noise')]==1
 # move time dim to the front for easy broadcasting? Not sure this works as expected
 epi_data = np.moveaxis(epi.dataobj,3,0)
-epi_noise = np.ma.masked_array(epi_data, mask=np.broadcast_to(noise_mask, epi_data.shape))
+epi_noise = np.ma.masked_array(epi_data, mask=np.broadcast_to(noise_mask!=1, epi_data.shape))
 
 
 mean_ts = np.zeros((len(regions),epi_data.shape[0]))
@@ -43,11 +46,11 @@ noise_sd = epi_noise.std(axis=(1,2,3)) # 200 measures of sd -- one for each time
 for region in ['phan_erode','alias', 'bg']:
     roi_i = regions.index(region)
     roi_mask = mask.dataobj[:,:,:, roi_i]
-    epi_mask = np.ma.masked_array(epi_data, mask=np.broadcast_to(roi_mask == 1, epi_data.shape))
+    epi_mask = np.ma.masked_array(epi_data, mask=np.broadcast_to(roi_mask != 1, epi_data.shape))
     ts = epi_mask.mean(axis=(1,2,3))
     snr_pk[region] = hist_peak_val(ts / noise_sd)
     mean_ts[roi_i,:] = ts # only used for visualizing
-print(snr_pk)
+tsv_dict(snr_pk)
 
 def vis_inspect():
     import matplotlib.pyplot as plt
@@ -55,7 +58,7 @@ def vis_inspect():
     plt.subplot(2,2,2); plt.imshow(epi_data[0,:,:,20]); plt.title('moveaxis')
     #test_maskk = np.ma.maked_array(np.ones(noise_mask.shape), noise_mask)
     plt.subplot(2,2,3); plt.imshow(epi_noise[0,:,:,20]); plt.title('epi masked')
-    plt.subplot(2,2,4); plt.imshow(noise_mask); plt.title('noise mask')
+    plt.subplot(2,2,4); plt.imshow(noise_mask[:,:,20]); plt.title('noise mask')
 
     plt.figure()
     plt.plot(mean_ts)
