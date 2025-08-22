@@ -26,9 +26,11 @@ input/QA_PRISMA3QA_20240809_180204_160000/: | input/
 	curl -L "https://github.com/NPACore/fw-mrrcqa/releases/download/1.0.20240822_pre-alpa/QA_PRISMA3QA_20240809_180204_160000.zip" > input/QA_PRISMA3QA_20240809_180204_160000.zip
 	cd input && unzip QA_PRISMA3QA_20240809_180204_160000.zip
 
-example: outputs/stats.json
+example: outputs/stats.json outputs/ants/snr.tsv
 outputs/stats.json: $(wildcard Program/*m) input/trunc/
 	QA_SAVE_IMAGES=1 Program/QC.m input/trunc
+outputs/ants/snr.tsv: input/trunc/ QA_ants.bash
+	./QA_ants.bash input/trunc $@ $@
 
 # copy only 4 over for quick testing
 input/trunc/: input/QA_PRISMA3QA_20240809_180204_160000/

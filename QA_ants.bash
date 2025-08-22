@@ -9,9 +9,19 @@ set -eou pipefail
 
 export AFNI_NIFTI_TYPE_WARN=NO
 
+[[ $# -lt 2 || "$*" =~ ^-h ]] && echo "USAGE: $0 input{/,.nii.gz,.zip} output/ tmp/" && exit 0
+
 dcm_in=${1:?FW input zip file, dcm directory, or 4d nii image}
-outdir=${2:-outdir}
+outdir=${2:-outputs/}
 workdir=${3:-${TMPDIR:-/tmp}} #"/flywheel/v0/work/"
+
+! command -v antsRegistrationSyN.sh  >/dev/null &&
+  echo "ERROR: ANTs tools are not in PATH" &&
+  exit 1
+! command -v 3dmaskave  >/dev/null &&
+  echo "ERROR: AFNI tools are not in PATH" &&
+  exit 1
+
 mkdir -p $workdir
 
 echo "# $(date) start"
