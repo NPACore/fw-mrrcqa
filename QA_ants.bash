@@ -61,8 +61,8 @@ mean_in=$workdir/mean.nii.gz
 #ImageMath 3 "$mean_in" mean "$in"
 
 ## tsnr
-time 3dTstat -mean -prefix "$mean_in" "$in"
-time 3dTstat -stdev -prefix "$workdir/stdev.nii.gz" "$in"  # raw sd
+3dTstat -mean -prefix "$mean_in" "$in"
+3dTstat -stdev -prefix "$workdir/stdev.nii.gz" "$in"  # raw sd
 
 # may want to remove drift?
 #3dDetrend -prefix "$workdir/det.nii.gz" -polort 4 "$in" # remove drift that otherwise inflates SD
@@ -82,34 +82,42 @@ antsApplyTransforms -e 3 -i "$mask" -r "$mean_in" -t $workdir/rigid0GenericAffin
 n0=$((n-1))
 for i in $(seq 0 $n0); do
    mask_at_roi=${workdir}/mask.nii.gz"[$i]"
-   #3dmaskave -mask ${workdir}/mask.nii.gz"[$i]" "$workdir/tsnr.nii.gz" | tee $workdir/tsnr${region[$i]}.txt
-   #Mean_1          NZcount_1       Min_1           Max_1           Med_1
+   # average pre-computed tsnr in each roi.
+   # 3dROIstats columns are fixed regardless of argument order
+   #     Mean_1          NZcount_1       Min_1           Max_1           Med_1
    3dROIstats -quiet -nobriklab -nzvoxels -sigma -minmax -median -mask "$mask_at_roi" "$workdir/tsnr.nii.gz" |
-      sed "s/^/${region[$i]}/" |
-      tee $workdir/tsnr-${region[$i]}.txt
+      sed "s/^/${region[$i]}/" > $workdir/tsnr-${region[$i]}.txt
 
-   # Average of each roi over time. organied for coluns to match above. but no nzvoxels
+   # Average of each roi at each time. dont need for noise roi. use SD calc below
+   [[ ${region[$i]} == "noise" ]] && continue
    3dmaskave -quiet -mask "$mask_at_roi" "$in" > $workdir/snr-${region[$i]}.txt
 done
+
+# stddev of noise mask for SNR denominator
+noise_roi=${workdir}/mask.nii.gz"[5]"
+3dROIstats -quiet -nobriklab -nomeanout -sigma -mask "$noise_roi" "$in" |sed 's/\t//' > $workdir/snr-noise-sd.txt
+
 mkdir -p $outdir
 echo -e "roi\tMean\tNZcount\tSigma\tMin\tMax\tMed" | tee $outdir/tsnr.tsv
 cat $workdir/tsnr-*.txt |tee -a $outdir/tsnr.tsv
 
 
-# SNR - want to divide by the roi averages by the signal in the dedicated noise ROI
+# SNR - want to divide by the roi averages by the sd of signal in the dedicated noise ROI
 dm_stats(){
+  # ordered so output columns to match tsnr. but no nzvoxels
    datamash mean 1 sstdev 1 min 1 max 1 median 1 |
       sed "s/^/${1:?roi}\t/"
 }
-noise_div(){ paste "${1:?timeseries}" $workdir/snr-noise.txt | awk '{print $1/$2}'; }
+noise_div(){ paste "${1:?timeseries}" $workdir/snr-noise-sd.txt | awk '{print $1/$2}'; }
 echo -e "roi\tMean\tSigma\tMin\tMax\tMed" |tee  $outdir/snr.tsv
 for roi in 'phan_erode' 'alias' 'bg'; do
    noise_div $workdir/snr-$roi.txt | dm_stats $roi | tee -a $outdir/snr.tsv
 done
-cat $workdir/snr-noise.txt | dm_stats noise_roi | tee -a $outdir/snr.tsv
+cat $workdir/snr-noise-sd.txt | dm_stats noise_sd | tee -a $outdir/snr.tsv
 
 
 echo "# $(date) finished in $(($(date +%s) - $start_time)) seconds"
+#  mlr --tsv cat --filename then cut -f filename,roi,Med,Max output/* | column -t
 
 # SNR is ratio of 
 # noisesignal is dedicated noise ROI
