@@ -7,9 +7,9 @@
 % load in ALL_MASK -- 4th dim is each mask
 load ../outputs/sigstat.mat 
 % x=cat(3,maskphan, maskbg, maskalias, mask_noiseroi, mask_pe_noiseroi, mask_ro_noiseroi);
-ref = spm_vol('../ref/bullet_phantom_ref.nii.gz');
+ref = spm_vol('../snr/ref/bullet_phantom_ref.nii.gz');
 
-ref.fname = '../ref/qa_masks.nii'; % single volume
+ref.fname = '../snr/ref/qa_masks.nii'; % single volume
 %ref.dim(4)=size(ALL_MASK,4);
 rmfield(ref,'pinfo');
 ref.dt(1) = spm_type('uint8'); % smallest size

@@ -19,3 +19,5 @@ PhantomQC.png
 tempurature_log.xlsx
 snr_wiki.log
 *.zip
+snr/hist_mode
+snr/local_bin
