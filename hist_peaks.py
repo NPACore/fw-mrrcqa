@@ -9,10 +9,10 @@ import sys
 from nibabel import load
 import numpy as np
 #(epi_file, tsnr_file, mask_file) = sys.argv[1:3]
-(epi_file, tsnr_file, mask_file) = ('./input/bullet_phantom_epi.nii.gz', '/tmp/tsnr/tsnr.nii.gz','input/qa_masks.nii')
+(epi_file, tsnr_file, mask_file) = ('./input/bullet_phantom_epi.nii.gz', '/tmp/tsnr/tsnr.nii.gz','ref/qa_masks.nii')
 epi = load(epi_file)
-tsnr = load(tsnr_file)
 mask = load(mask_file)
+tsnr = load(tsnr_file)
 
 regions=('phan_erode','bg', 'noise', 'readout', 'phaseenc', 'alias')
 nregion = mask.shape[3]
@@ -61,6 +61,12 @@ def vis_inspect():
     plt.subplot(2,2,4); plt.imshow(noise_mask[:,:,20]); plt.title('noise mask')
 
     plt.figure()
-    plt.plot(mean_ts)
+    plt.subplot(2,1,1); plt.title('roi snr per TR');
+    plt.ylabel('roi vol mean / noise sd'); plt.xlabel('volume')
+    plt.plot(mean_ts.T, label=regions); plt.legend()
+
+    plt.subplot(2,1,2); plt.title('snr - min(snr)');
+    plt.plot(mean_ts.T - np.expand_dims(mean_ts.min(axis=1), axis=0))
+    plt.tight_layout()
 
     plt.show()

@@ -21,6 +21,10 @@ ENV ANTSPATH=/usr/bin
 # ANTs and AFNI binaries, just the minimal needed
 # COPY --from= afni/afni_make_build:AFNI_25.2.08 /opt/afni/install/{3dROIstats,3dmaskave,3dTstat,libf2c.so,libmri.so /usr/bin/
 COPY local_bin/* /usr/bin/
-COPY QA_ants.bash hist_peaks.py ${FLYWHEEL}/
+
+# copy bullet_phantom_ref.nii.gz qa_masks.nii
+COPY ref/ ${FLYWHEEL}/ref
+
+COPY QA_ants.bash hist_peaks.py hist_mode ${FLYWHEEL}/
 
 ENTRYPOINT ${FLYWHEEL}/QA_ants.bash

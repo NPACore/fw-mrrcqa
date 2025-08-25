@@ -29,8 +29,14 @@ input/QA_PRISMA3QA_20240809_180204_160000/: | input/
 example: outputs/stats.json outputs/ants/snr.tsv
 outputs/stats.json: $(wildcard Program/*m) input/trunc/
 	QA_SAVE_IMAGES=1 Program/QC.m input/trunc
-outputs/ants/snr.tsv: input/trunc/ QA_ants.bash
-	./QA_ants.bash input/trunc $@ $@
+outputs/ants/snr.tsv: input/trunc/ QA_ants.bash hist_mode
+	./QA_ants.bash input/trunc $(dir $@) $(dir $@)
+hist_mode: hist_mode.c
+	gcc ./hist_mode.c -o hist_mode
+DOCKER_ANTS_VER=1.0.0
+.docker_ants: Dockerfile.ants hist_mode QA_ants.bash local_bin/
+	docker build -t npac/mrrcqa-ants:$(DOCKER_ANTS_VER) -f Dockerfile.ants
+	docker inspect --format='{{index .RepoDigests 0}} {{.Created}}' npac/mrrcqa-ants:$(DOCKER_ANTS_VER) > $@
 
 # copy only 4 over for quick testing
 input/trunc/: input/QA_PRISMA3QA_20240809_180204_160000/
@@ -49,8 +55,13 @@ test-docker: .docker
 
 local_bin/:
 	mkdir -p $@
-	cp `which antsRegistrationSyN.sh` `which antsApplyTransforms` `which ANTS` `which antsRegistration` `which PrintHeader` $@
-	docker run  afni/afni_make_build:AFNI_25.2.08 bash -c "cd /opt/afni/install/; tar -cvf- 3dinfo 3dROIstats 3dmaskave 3dTstat 3dcalc libf2c.so libmri.so" | sed 1d | tar -C local_bin/ -xf-
+	docker run  afni/afni_make_build:AFNI_25.2.08 bash -c "cd /opt/afni/install/; tar -cf- 3dinfo 3dROIstats 3dmaskave 3dTstat 3dcalc libf2c.so libmri.so" | tar -C local_bin/ -xvf-
+
+	# static binaries
+	cp `which antsRegistrationSyN.sh` `which antsApplyTransforms` `which ANTS` `which antsRegistration` `which PrintHeader` `which ConvertTransformFile` $@
+	# using docker would be nicer,reproducable. but it uses linked binaries.
+	# would need ants*.so and many ITK, libitkgdcm, etc libs
+	# docker run docker.io/antsx/ants:v2.6.2 bash -c "cd /opt/ants/bin/; tar -cf- antsRegistrationSyN.sh antsApplyTransforms ANTS antsRegistration PrintHeader ConvertTransformFile" | tar -C local_bin/ -xvf-
 
 %/:
 	mkdir -p $@
