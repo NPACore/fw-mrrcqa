@@ -19,3 +19,18 @@ for i =1:size(ALL_MASK,4)
    ref.n(1)=i;
    spm_write_vol(ref,ALL_MASK(:,:,:,i));
 end
+
+% 20250902 - input is shifted! does not match original position
+% see dostats.m:220
+%   DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),[dx dy]);
+%   mask = circshift(mask,[dx dy]);
+%   maskalias = circshift(maskalias,[dx dy]);
+dataout = spm_vol('../snr/ref/bullet_phantom_ref.nii.gz');
+dataout.fname = '../snr/ref/phantom_recentered_4d.nii'; % single volume
+%ref.dim(4)=size(ALL_MASK,4);
+rmfield(dataout,'pinfo');
+for i =1:size(DATA,4)
+   dataout.n(1)=i;
+   spm_write_vol(dataout,DATA(:,:,:,i));
+end
+system(['3dMean -overwrite -prefix ../snr/ref/bullet_phantom_ref_center.nii.gz ',dataout.fname])

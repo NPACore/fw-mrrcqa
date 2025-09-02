@@ -22,8 +22,9 @@ ENV ANTSPATH=/usr/bin
 # COPY --from= afni/afni_make_build:AFNI_25.2.08 /opt/afni/install/{3dROIstats,3dmaskave,3dTstat,libf2c.so,libmri.so /usr/bin/
 COPY local_bin/* /usr/bin/
 
-# copy bullet_phantom_ref.nii.gz qa_masks.nii
-COPY ref/ ${FLYWHEEL}/ref
+# have but dont need ref/bullet_phantom_ref.nii.gz
+# it's not centered a la ../Program/dostat.m:220
+COPY ref ${FLYWHEEL}/ref
 
 COPY QA_ants.bash hist_peaks.py hist_mode ${FLYWHEEL}/
 
