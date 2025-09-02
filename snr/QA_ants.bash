@@ -89,8 +89,10 @@ mean_in=$workdir/mean.nii.gz
    -m "$mean_in" -s "$workdir/stdev.nii.gz" \
    -expr 'm/s' -float -prefix "$workdir/tsnr.nii.gz"
 
+# move reference into mean phantom of current scan. will do the same to the mask
+# fixed is current, moving if reference (backwards)
 # transform does not need to be ridgid. could be just transform? 't' instead of current 'r'
-time antsRegistrationSyN.sh -d 3 -f "$ref" -m "$mean_in" -t r -o $workdir/rigid > $workdir/ants-SyN.log
+time antsRegistrationSyN.sh -d 3 -m "$ref" -f "$mean_in" -t r -o $workdir/rigid > $workdir/ants-SyN.log
 
 # bring mask into current
 antsApplyTransforms -e 3 -i "$mask" -r "$mean_in" -t $workdir/rigid0GenericAffine.mat -n NearestNeighbor -o $workdir/mask.nii.gz
