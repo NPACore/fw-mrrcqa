@@ -64,7 +64,7 @@ upload_csv <- function(d, wiki_name='PhantomQC.csv'){
     up <- import("wiki_upload")
     wiki_root <- Sys.getenv("WIKIROOT")
     # without this, python code would also default to WIKIROOT and error if empty
-    if(!nzchar(wiki_root)) wiki_root <- "http://rad.pitt.edu/wiki/"
+    if(!nzchar(wiki_root)) wiki_root <- "https://wiki.mrrc.pitt.edu/"
 
     dw <- up$DokuWiki(wiki_root)
 

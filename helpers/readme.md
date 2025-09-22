@@ -13,7 +13,7 @@ The scripts interface with Flywheel and the dokuwiki website.
      * values are written by `../Program/run.py` when run as a flywheel gear.
      * values are pulled using the [Flywheel Python SDK](https://flywheel-io.gitlab.io/product/backend/sdk/) and assume previous authentication with the [CLI](https://docs.flywheel.io/CLI/) (`fw login`)
   2. ggplot to create a visually summary and highlight outliers over time on the 3 Prisma scanenrs , especially `Z` shim and `tsnr` values
-  3. `wiki_upload.py` to upload the plot to https://rad.pitt.edu/wiki/doku.php?id=scan
+  3. `wiki_upload.py` to upload the plot to https://wiki.mrrc.pitt.edu/doku.php?id=scan
      * over [XML-RPC](https://www.dokuwiki.org/devel:xmlrpc)
      * credentials pulled from env (`WIKIUSER`/`WIKIPASS`) or [`pass`](https://www.passwordstore.org/)
 

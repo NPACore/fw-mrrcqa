@@ -22,6 +22,9 @@ Useful links
 """
 
 import base64
+# 20250922- disable SSL checks. wiki.mrrc.pitt.edu has odd certs
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 from xmlrpc.client import ServerProxy, Binary
 import os
 import subprocess
@@ -131,7 +134,7 @@ def upload_snr(img_path: str):
     :param img_path: path of image to upload. likely a temporary file. See snr_from_db.py
     """
 
-    dw = DokuWiki("http://rad.pitt.edu/wiki/")
+    dw = DokuWiki("https://wiki.mrrc.pitt.edu/")
     return dw.upload_file(img_path, wiki_name="mrrc_prismas_snr.png")
 
 

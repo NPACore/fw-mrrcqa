@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # update tsnr plot on wiki
-#  https://rad.pitt.edu/wiki/doku.php?id=scan
+#  https://wiki.mrrc.pitt.edu/doku.php?id=scan
 # expect to be run by cron
 # after flywheel has run ../Program/run.py on newest phantomQA
 #
@@ -28,6 +28,14 @@ case "$(uname -a)" in
    source $GUIX_PROFILE/etc/profile
    export PATH="$GUIX_PROFILE/bin:$PATH"
    export R_LIBS_USER=$HOME/R
+
+   # 20250229 - switch to wiki.mrrc.pitt.edu. wiki allowed by firefox, but not curl/requests
+   #            lazy fix in wiki_upload.py: ssl._create_unverified_context
+   #export SSL_CERT_DIR="$HOME/etc/ssl/certs"
+   #export SSL_CERT_FILE="$SSL_CERT_DIR/ca-certificates.crt"
+   #export GIT_SSL_CAINFO="$SSL_CERT_FILE" CURL_CA_BUNDLE="$SSL_CERT_FILE"
+   # guix shell ...  nss-certs
+
    guix shell \
      glibc@2.39 r r-ggrepel r-pacman r-reticulate r-dplyr r-tidyr r-ggplot2 r-lubridate r-lubridate r-cowplot r-readxl -- \
      ./plots.R;;
