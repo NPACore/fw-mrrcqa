@@ -12,38 +12,50 @@
             $schema: "https://vega.github.io/schema/vega-lite/v5.json",
             description: "Multi-line timeseries per scanner and variable.",
             data: {
-               url: "https://wiki.mrrc.pitt.edu/lib/exe/fetch.php?cache=&media=phantomqc.csv",
-               format: { type: "csv" }
+               url: "https://wiki.mrrc.pitt.edu/lib/exe/fetch.php?media=phantomqc.csv",
+               // "DATE" column is of type "date"
+               format: { type: "csv", parse: { "DATE": "date" } }
             },
-            transform: [
-               { calculate: "toDate(datum.DATE)", as: "parsed_date" }
+            params: [
+               // slider to set number of days to show
+               { "name": "nDays", "value": 60,
+                  "bind": {"input": "range", "min": 0, "max": 365, "step": 15}
+               },
+               // javascript: negatives days to correctly translated to previous month and/or year
+               { name: "cutoff", expr: "datetime(year(now()), month(now()), date(now())-nDays)" }
             ],
+
+            transform: [
+               { fold: ["tsnr", "Z", "Temp"], as: ["variable", "value"] },
+               // default is show only last 2 months
+               { filter: "datum.DATE >= cutoff" }
+            ],
+
             facet: {
-               column: { field: "variable", type: "nominal" },
-               row: { field: 'scanner', type: 'nominal' }},
+               column: { field: "scanner", type: "nominal" },
+               row: { field: "variable", type: "nominal" }
+            },
             resolve: { scale: { y: "independent" } },
+
             spec: {
-               mark: {type: "line", point: true},
+               mark: { type: "line", point: true },
+               selection: {   "grid": { "type": "interval", "bind": "scales" }},
                encoding: {
-                  x: { field: "parsed_date", type: "temporal", title: "Date" },
-                  y: { field: "value", type: "quantitative",  scale: {zero: false }},
+                  x: {
+                     field: "DATE",
+                     type: "temporal",
+                     title: "Date",
+                     scale: { domainMin: { expr: "cutoff" } }
+                  },
+                  y: { field: "value", type: "quantitative", scale: { zero: false } },
                   color: { field: "scanner", type: "nominal" },
                   tooltip: [
                      { field: "scanner", type: "nominal" },
                      { field: "value", type: "quantitative" },
-                     { field: "parsed_date", type: "temporal" }
+                     { field: "DATE", type: "temporal" }
                   ]
                }
-            },
-            transform: [
-               {
-                  fold: ["tsnr", "Z"], // TODO: add tempurature
-                  as: ["variable", "value"]
-               },
-               { calculate: "toDate(datum.DATE)", as: "parsed_date" },
-               { "type": "filter", "expr": "datum.parsed_date >= timeOffset('month', now(), -6)"}
-            ]
-
+            }
          });
       </script>
 </html>
