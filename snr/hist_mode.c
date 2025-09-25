@@ -3,6 +3,10 @@
 
 #define MAX_SIZE 1000
 #define NBIN 120
+/*
+ * prints the winning bin:
+ * bin center, cnt (number values in bin), bin lower bound, bin upper bound
+ */
 
 struct winner { int cnt; float val; };
 int main() {
@@ -19,7 +23,7 @@ int main() {
         }
         if(count>1 && numbers[count-1] > num){
             printf("Numbers are not sorted @ line %i %.3f > %.3f\n",
-                   count, numbers[count-1] > num);
+                   count, numbers[count-1], num);
             return 2;
         }
 
@@ -55,7 +59,7 @@ int main() {
 
       //TODO: leave loop early if w.val + i > count ?
     }
-    printf("%d\t%.3f\t%.3f\n", w.cnt, w.val, w.val + binsize);
+    printf("%.3f\t%d\t%.3f\t%.3f\n",w.val + binsize/2,  w.cnt, w.val, w.val + binsize);
 
     return 0;
  }
