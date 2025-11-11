@@ -10,6 +10,7 @@ import os
 import subprocess
 import flywheel
 from nibabel.nicom import csareader
+import pydicom
 from glob import glob
 from zipfile import ZipFile
 
@@ -31,9 +32,24 @@ def notify(msg: str, faddr:str, taddr: str):
     mail($to,$subject,$message,$headers);
     """
     from smtplib import SMTP
-    with SMTP(re.sub('.*@','',faddr) as srv:
+    with SMTP(re.sub('.*@','',faddr)) as srv:
         srv.sest_debuglevel(1)
         srv.sendmail(faddr, taddr, msg)
+
+def read_phoenix(dcm, reg=None):
+    """
+    Pulled out of read_z to also read ShimMode (2025-11-11)
+    Currently just used interactively, not in 'main'
+    :param dcm: dicom object to extract MrPhoenixPprotocol text
+    :param reg: seach with first capture group to report
+    """
+    csa = dcm.get((0x0029, 0x1020))
+    csa_s = csareader.read(csa.value)
+    asccov = csa_s["tags"]["MrPhoenixProtocol"]["items"][0]
+    if not reg:
+        return asccov
+    else:
+        return reg.search(asccov).group(1)
 
 def read_z(dcm) -> float:
     """
@@ -77,7 +93,7 @@ def first_dicom_from_zip(zfname) -> pydicom.dataset.FileDataset:
     """
     with ZipFile(zfname) as zf:
         first = [x for x in zf.filelist if x.file_size>0][0]
-        with first.open() as dcm_fh:
+        with zf.open(first) as dcm_fh:
             dcm = pydicom.dcmread(dcm_fh)
     return dcm
 
