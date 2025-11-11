@@ -19,7 +19,7 @@ int main() {
         }
         if(count>1 && numbers[count-1] > num){
             printf("Numbers are not sorted @ line %i %.3f > %.3f\n",
-                   count, numbers[count-1] > num);
+                   count, numbers[count-1], num);
             return 2;
         }
 
