@@ -32,11 +32,11 @@ start_time=$(date +%s)
 
 # dcm2niix -o input -f bullet_phantom_epi -z y input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/
 # 3dTstat -mean -prefix input/bullet_phantom_ref.nii.gz input/bullet_phantom_epi.nii.gz
-ref=$scriptdir/ref/bullet_phantom_ref_center.nii.gz
+ref=$scriptdir/ref/bullet_phantom_ref.nii.gz
 ! test -r "$ref" && echo "ERROR: alignment reference '$ref' is not found" && exit 1
 
 # see Program/write_mask.m
-mask=$scriptdir/ref/qa_masks.nii
+mask=$scriptdir/ref/qa_masks_noshift.nii
 ! test -r "$mask" && echo "ERROR: snr ROI atlas/mask '$mask' is not found" && exit 1
 
 region=(phan_erode bg noise readout phaseenc alias)
