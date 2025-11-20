@@ -27,9 +27,10 @@ for i =1:size(ALL_MASK,4)
    ref.n(1)=i;
    spm_write_vol(ref,vol_data);
 
+   % undo shift
    noshift.n(1)=i;
    unshifted_vol = circshift(vol_data, [dx dy]);
-   spm_write_vol(noshift,unshifted_vol);
+   spm_write_vol(noshift, unshifted_vol);
 end
 
 % 20250902 - input is shifted! does not match original position
