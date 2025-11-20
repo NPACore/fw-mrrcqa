@@ -21,3 +21,5 @@ snr_wiki.log
 *.zip
 snr/hist_mode
 snr/local_bin
+output/*png
+output/*json

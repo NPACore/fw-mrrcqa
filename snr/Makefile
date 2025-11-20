@@ -18,8 +18,9 @@ hist_mode: hist_mode.c
 	docker build -t npac/mrrcqa-ants:$(DOCKER_ANTS_VER) -f Dockerfile
 	docker inspect --format='{{index .RepoDigests 0}} {{.Created}}' npac/mrrcqa-ants:$(DOCKER_ANTS_VER) > $@
 
-# ref/qa_masks_noshift.nii
+# ref/qa_masks_noshift.nii.gz
 # ref/qa_masks.nii
 # ref/bullet_phantom_ref_center.nii.gz
-ref/bullet_phantom_ref_center.nii.gz: ref/bullet_phantom_ref.nii.gz
-	octave --nogui --eval '../Program/write_mask.m'
+ref/qa_masks_noshift.nii.gz: ref/bullet_phantom_ref.nii.gz
+	octave --no-gui --eval '../Program/write_mask.m'
+	gzip ref/qa_masks_noshift.nii

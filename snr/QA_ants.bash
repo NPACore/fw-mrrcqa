@@ -36,7 +36,7 @@ ref=$scriptdir/ref/bullet_phantom_ref.nii.gz
 ! test -r "$ref" && echo "ERROR: alignment reference '$ref' is not found" && exit 1
 
 # see Program/write_mask.m
-mask=$scriptdir/ref/qa_masks_noshift.nii
+mask=$scriptdir/ref/qa_masks_noshift.nii.gz
 ! test -r "$mask" && echo "ERROR: snr ROI atlas/mask '$mask' is not found" && exit 1
 
 region=(phan_erode bg noise readout phaseenc alias)
