@@ -27,8 +27,9 @@ for i =1:size(ALL_MASK,4)
    ref.n(1)=i;
    spm_write_vol(ref,vol_data);
 
-   noshift.n(1)=i;
+   % undo shift
    unshifted_vol = circshift(voldata, [dx dy]);
+   noshift.n(1)=i;
    spm_write_vol(noshift,unshifted_vol);
 end
 

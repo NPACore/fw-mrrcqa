@@ -19,6 +19,7 @@ catch
   % NB. octave does not support MATLABs default n=4 (line structuring elements)
   % see mask_structuring_elements.m
   cached_se = fullfile(fileparts(mfilename),'mask_structuring_elements.mat');
+  if ~ exist(cached_se, 'file'), error(cached_se, ' doesnt exist!?'); end
   load(cached_se, 'sec','se');
   warning(['using cached se and sec from ', cached_se])
 end
@@ -79,6 +80,7 @@ name = D(1,1).name;
 folder = D(1,1).folder;
 P = [folder '/' name];
 %info = dicominfo(P);
+% fprintf('# reading %s\n', P);
 [info, err] = dicm_hdr(P); %extended dicom info
 % image size and mosaic size
 nx = double(info.AcquisitionMatrix(1));
