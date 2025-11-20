@@ -1,5 +1,5 @@
 function [stat] = dostat(pfolder,bfig, outdir)
-% function [stat] = dostat(pfolder,bfig)
+% function [stat] = dostat(pfolder,bfig, outdir)
 
 %{
 %% Release memory
@@ -315,7 +315,10 @@ if ~isempty(getenv('QA_SAVE_IMAGES'))
     save(matfname, 'DATA','t',...
         'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
         'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal', ...
-        'roi_area', 'MASK','ALL_MASK', 'dx','dy');
+         'roi_area', 'MASK','ALL_MASK', ...
+         'DX','DY', ... DX all 0, DY all -1
+         'ishift', 'hzrng' ... hzrng not used!
+        );
 else
     fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
 end

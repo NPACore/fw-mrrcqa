@@ -6,7 +6,7 @@
 %%%%%%%%
 
 % load in ALL_MASK -- 4th dim is each mask
-load('../output/sigstat.mat')
+load('../output/sigstat.mat') % DX, DY, ALL_MASK
 % x=cat(3,maskphan, maskbg, maskalias, mask_noiseroi, mask_pe_noiseroi, mask_ro_noiseroi);
 ref = spm_vol('../snr/ref/bullet_phantom_ref.nii.gz');
 
@@ -19,6 +19,7 @@ ref.dt(1) = spm_type('uint8'); % smallest size
 noshift = spm_vol('../snr/ref/bullet_phantom_ref.nii.gz');
 noshift.fname = '../snr/ref/qa_masks_noshift.nii';
 rmfield(noshift,'pinfo');
+noshift.dt(1) = spm_type('uint8'); % smallest size
 
 % https://github.com/VUIIS/spm_readwrite_nii
 for i =1:size(ALL_MASK,4)
@@ -29,7 +30,8 @@ for i =1:size(ALL_MASK,4)
 
    % undo shift
    noshift.n(1)=i;
-   unshifted_vol = circshift(vol_data, [dx dy]);
+   zyxshift = [0 ishift] + [0 DY(1)  DX(1)]; % => [0 12-1 0]
+   unshifted_vol = circshift(vol_data, zyxshift + [1 1 0]); % tweak by hand a tiny bit
    spm_write_vol(noshift, unshifted_vol);
 end
 
