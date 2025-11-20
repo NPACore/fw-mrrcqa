@@ -6,7 +6,7 @@
 %%%%%%%%
 
 % load in ALL_MASK -- 4th dim is each mask
-load ../outputs/sigstat.mat 
+load('../output/sigstat.mat')
 % x=cat(3,maskphan, maskbg, maskalias, mask_noiseroi, mask_pe_noiseroi, mask_ro_noiseroi);
 ref = spm_vol('../snr/ref/bullet_phantom_ref.nii.gz');
 
@@ -28,7 +28,7 @@ for i =1:size(ALL_MASK,4)
    spm_write_vol(ref,vol_data);
 
    noshift.n(1)=i;
-   unshifted_vol = circshift(voldata, [dx dy]);
+   unshifted_vol = circshift(vol_data, [dx dy]);
    spm_write_vol(noshift,unshifted_vol);
 end
 
