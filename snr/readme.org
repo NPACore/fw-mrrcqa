@@ -1,0 +1,66 @@
+#+TITLE: Signal to Noise
+The original QC matlab code runs very slow in an octave container.
+This sub-directory tracks an implementation using compiled software instead, namely ANTs and AFNI.
+
+Faster execution will allow near realtime alerting of issues.
+Shim error alerts are already by https://github.com:NPACore/file-curator (~examples/shim_notify.py~).
+
+* Faster methods
+
+dostats.m finds the center for each input and runs circshift on each slice. Here we instead get the rigid affine transform that will match input to a template. And warp the unshifted template ROI mask to the new input. Also see https://wiki.mrrc.pitt.edu/doku.php?id=data:qc
+
+** Orig
+
+#+begin_src bash :results graphics file :file mask_centered.png :exports results
+export DISPLAY=:99 file=mask_centered.png
+Xvfb $DISPLAY &
+xvpid=$!
+
+test -r /tmp/masksum_c.nii.gz ||
+  3dTstat -overwrite\
+   -prefix $_ \
+   -sum "3dcalc(-t 1D:1,2,3,4,5,6 -m ref/qa_masks.nii -expr t*m )"
+
+time afni -no_detach \
+     -com 'OPEN_WINDOW A.axialimage opacity=.5 geom=188x188' \
+     -com 'SET_UNDERLAY bullet_phantom_ref_center.nii.gz' \
+     -com "SET_XHAIRS OFF; SAVE_PNG A.axialimage /tmp/phantom_c.png" \
+     -com 'SWITCH_OVERLAY masksum_c.nii.gz' \
+     -com "SET_PBAR_SIGN A.+" \
+     -com "SAVE_PNG A.axialimage /tmp/masksum_c.png" \
+     -com "QUIT" \
+     ref/bullet_phantom_ref_center.nii.gz /tmp/masksum_c.nii.gz
+kill $xvpid
+gm convert +append /tmp/phantom_c.png /tmp/masksum_c.png  $file
+#+end_src
+
+#+RESULTS:
+[[file:mask_centered.png]]
+
+** Unshifted
+We can save the shift parameters and mask (QA_MASKS_NOSHIFT=1 w/ ~../Program/dostat.m~ and undo the shift with ~../Program/write_mask.m~.
+
+#+begin_src bash :results graphics file :file mask_overlay.png :exports results
+export DISPLAY=:99 file=mask_overlay.png
+Xvfb $DISPLAY &
+xvpid=$!
+
+: 3dTstat -overwrite\
+   -prefix /tmp/masksum.nii.gz \
+   -sum "3dcalc(-t 1D:1,2,3,4,5,6 -m ref/qa_masks_noshift.nii.gz -expr t*m )"
+
+time afni -no_detach \
+     -com 'OPEN_WINDOW A.axialimage opacity=.5 geom=188x188' \
+     -com 'SET_UNDERLAY bullet_phantom_ref.nii.gz' \
+     -com "SET_XHAIRS OFF; SAVE_PNG A.axialimage phantom.png" \
+     -com 'SWITCH_OVERLAY masksum.nii.gz' \
+     -com "SET_PBAR_SIGN A.+" \
+     -com "SAVE_PNG A.axialimage masksum.png" \
+     -com "QUIT" \
+     ref/bullet_phantom_ref.nii.gz /tmp/masksum.nii.gz
+kill $xvpid
+gm convert +append phantom.png masksum.png  $file
+#+end_src
+
+#+RESULTS:
+[[file:mask_overlay.png]]
