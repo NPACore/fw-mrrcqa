@@ -133,7 +133,7 @@ dm_stats(){
 noise_div(){ paste "${1:?timeseries}" $workdir/snr-noise-sd.txt | awk '{print $1/$2}'; }
 
 echo -e "roi\tMean\tSigma\tMin\tMax\tMed" |tee  $outdir/snr.tsv
-echo -e "roi\tBinCount\tBinStart\tBinEnd" |tee  $outdir/histmode_snr.tsv
+echo -e "roi\tHistMode\tBinCount\tBinStart\tBinEnd" |tee  $outdir/histmode_snr.tsv
 for roi in 'phan_erode' 'alias' 'bg'; do
    noise_div $workdir/snr-$roi.txt | dm_stats $roi | tee -a $outdir/snr.tsv
    # 120 bin histogram peak
