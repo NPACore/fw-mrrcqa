@@ -64,3 +64,61 @@ gm convert +append phantom.png masksum.png  $file
 
 #+RESULTS:
 [[file:mask_overlay.png]]
+
+* Original Calc
+We have input with =46= slices and =200= timepoints
+#+begin_src bash :colnames '(x y z t)
+  3dinfo -n4 ../input/bullet_phantom_epi.nii.gz
+#+end_src
+
+#+RESULTS:
+|  x |  y |  z |   t |
+|----+----+----+-----|
+| 94 | 94 | 46 | 200 |
+
+Output stores histogram (120 values) and peak.
+
+#+begin_src bash
+  jq -r '[(.snr[0]|length), .snrpk]|@tsv' ../output/stats.json
+#+end_src
+
+#+RESULTS:
+| 120 | 213.72034509322128 |
+
+
+An excerpt from [[file:../Program/dostat.m]] shows reported snr is 120-bin histogram from mean/std of each slice×timepont (src_calc{46*200} {{{results(=9200=)}}}))
+#+begin_src matlab :eval never :results none
+phansignal = zeros(2, nz,nfile); % 1 - mean; 2 - std
+i=1:nfile % volume (time point)
+ ll = ii + (jj-1)*mx; % z; mosaic ii=1:my; jj=1:mx
+ dataslice = DATA(:,:,ll,i);
+ phansignal(1,ll,i) = mean(dataslice1(Iphan1));
+ phansignal(2,ll,i) = std(dataslice1(Iphan1));
+snr = phansignal(1,:)./noisesignal(2,:);
+[snrn,snrx] = hist(snr,120);
+[M,I] = max(snrn); stat.snrpk = snrx(I)
+#+end_src
+
+#+begin_src octave :session
+load('../output/sigstat.mat')
+nz = size(DATA,3);
+nfile = size(DATA,4);
+phansignal = zeros(2, nz,nfile); % [mean; std,:,:]
+for ll=1:nz
+  Iphan1 = find(ALL_MASK(:,:,ll,1)==1);
+  for i=1:nfile
+   dataslice1 = DATA(:,:,ll,i);
+   phansignal(1,ll,i) = mean(dataslice1(Iphan1));
+   phansignal(2,ll,i) = std(dataslice1(Iphan1));
+  end
+end
+snr = phansignal(1,:)./noisesignal(2,:);
+[snrn,snrx] = hist(snr,120);
+[M,I] = max(snrn);
+stat.snrpk = snrx(I)
+
+jout = jsondecode(fileread('../output/stats.json'));
+#+end_src
+
+#+RESULTS:
+: >

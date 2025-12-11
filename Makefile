@@ -31,6 +31,8 @@ outputs/stats.json: $(wildcard Program/*m) input/trunc/
 	QA_SAVE_IMAGES=1 Program/QC.m input/trunc
 outputs/ants/snr.tsv: input/trunc/ QA_ants.bash hist_mode
 	make -C snr
+outputs/full_ml/stats.json: input/QA_PRISMA3QA_20240809_180204_160000/
+	QA_SAVE_IMAGES=1 matlab -r "addpath('Program'); try, dostat('input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003',0, 'outputs/full_ml'); catch e, e, quit,end"
 
 # copy only 4 over for quick testing
 input/trunc/: input/QA_PRISMA3QA_20240809_180204_160000/
