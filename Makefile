@@ -1,12 +1,24 @@
 .PHONY: all test example
 DOCKER_NAME := $(shell jq -r '.custom."gear-builder".image' manifest.json)
+MCC ?= /opt/ni_tools/MATLAB/R2021a/bin/mcc
+
+mlbin/qastats: Program/dostat.m 
+	mkdir -p $(dir $@)
+	cd $(dir $@) && $(MCC) -m ../$? -o $(notdir $@)
+
+mlbin/installer_input.txt: mlbin/qastats
+	cd $(dir $@) && matlab -r "try, run('buildcontainer'); catch e,e,end; quit"
 
 all: .gear-run.txt
-.docker: Dockerfile $(wildcard Program/*)
-	docker build -t $(DOCKER_NAME) ./
+.docker-octave: Dockerfile $(wildcard Program/*)
+	docker build -t $(DOCKER_NAME)-octave ./
 	date > $@
 
-.gear: manifest.json .docker
+.docker-ml: Dockerfile mlbin/qastats
+	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab ./
+	date > $@
+
+.gear: manifest.json .docker-ml
 	# source /home/foranw/src/fw-beta-cli/.venv/bin/activate
 	fw-beta gear build .
 	date > $@
