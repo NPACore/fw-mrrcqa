@@ -23,11 +23,13 @@ if ~exist(output_dir,'dir'), mkdir(output_dir); end
 json_outfile = fullfile(output_dir, 'stats.json');
 
 %dcm_stats_write = rmfield(dcm_stats,'bufstr');
-json_str = jsonencode(dcm_stats);
-fprintf('saving %d chars of json to %s\n', length(json_str), json_outfile);
-fid = fopen(json_outfile,'w');
-fprintf(fid, '%s', json_str);
-fclose(fid);
+
+%% 20251211 now run inside dostats (when outdir is specified)
+% json_str = jsonencode(dcm_stats);
+% fprintf('saving %d chars of json to %s\n', length(json_str), json_outfile);
+% fid = fopen(json_outfile,'w');
+% fprintf(fid, '%s', json_str);
+% fclose(fid);
 
 % 20250409 - removed QC plots (bar.png)
 % 20250821 - use env var guard

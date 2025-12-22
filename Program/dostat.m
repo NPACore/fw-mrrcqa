@@ -302,27 +302,6 @@ for i=1:nfile
     cnt = cnt + 1;
 end
 
-%% Saving
-% 20250821 - env variable guard
-if ~isempty(getenv('QA_SAVE_IMAGES'))
-    maskphan = mask;
-    maskbg = 1 - mask;
-    mask_noiseroi = noiseroi;
-    mask_ro_noiseroi = ro_noiseroi;
-    mask_pe_noiseroi = pe_noiseroi;
-    matfname = fullfile(outdir, 'sigstat.mat');
-    fprintf('# saving %s\n', matfname)
-    save(matfname, 'DATA','t',...
-        'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
-        'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal', ...
-         'roi_area', 'MASK','ALL_MASK', ...
-         'DX','DY', ... DX all 0, DY all -1
-         'ishift', 'hzrng' ... hzrng not used!
-        );
-else
-    fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
-end
-
 %% Statistics
 %
 % signal size is (2, 46, 200) - mean&sd measure per slice per timepoint
@@ -384,5 +363,45 @@ stat.dicominfo = s;
 stat.date = stat.dicominfo.StudyDate;
 
 stat.calc_dur = toc(calc_start_time);
+
+%% Saving
+% 20251211 - moved from QC.m to here
+if nargin > 2
+   if ~exist(output_dir,'dir'), mkdir(output_dir); end
+   json_str = jsonencode(dcm_stats);
+   fprintf('saving %d chars of json to %s\n', length(json_str), json_outfile);
+   fid = fopen(json_outfile,'w');
+   fprintf(fid, '%s', json_str);
+   fclose(fid);
+end
+
+% 20250821 - env variable guard;
+% 20251211 - move to bottom to capture more
+if ~isempty(getenv('QA_SAVE_IMAGES'))
+    maskphan = mask;
+    maskbg = 1 - mask;
+    mask_noiseroi = noiseroi;
+    mask_ro_noiseroi = ro_noiseroi;
+    mask_pe_noiseroi = pe_noiseroi;
+    matfname = fullfile(outdir, 'sigstat.mat');
+
+
+    fprintf('# saving %s\n', matfname)
+    save(matfname, 'DATA','t',...
+        'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
+        'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal', ...
+         'roi_area', 'MASK','ALL_MASK', 'idx', ...
+         'DX','DY', ... DX all 0, DY all -1
+         'ishift', 'hzrng', ... hzrng not used!
+         'stat', ... final output
+         ... signals and mean/std calcs
+         'snr', 'phansignal', ...
+         'alias',  'aliasnoisesignal',...
+         'background','totnoisesignal', ...
+         'noise', 'noisesignal' ...
+        );
+else
+    fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
+end
 
 return;
