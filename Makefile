@@ -1,26 +1,26 @@
 .PHONY: all test example
 DOCKER_NAME := $(shell jq -r '.custom."gear-builder".image' manifest.json)
+
+# MCC only used by old rule for manually compiled 'mlbin/qastats'
 MCC ?= /opt/ni_tools/MATLAB/R2021a/bin/mcc
-
-mlbin/qastats: Program/dostat.m 
-	mkdir -p $(dir $@)
-	cd $(dir $@) && $(MCC) -m ../$? -o $(notdir $@)
-
-mlbin/installer_input.txt: mlbin/qastats
-	cd $(dir $@) && matlab -r "try, run('buildcontainer'); catch e,e,end; quit"
 
 all: .gear-run.txt
 .docker-octave: Dockerfile $(wildcard Program/*)
-	docker build -t $(DOCKER_NAME)-octave ./
+	docker build -t $(DOCKER_NAME)-octave -f Dockerfile ./
 	date > $@
 
-.docker-ml: Dockerfile mlbin/qastats
-	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab ./
-	date > $@
+.docker-mlbase: Program/dostat.m 
+	matlab -r "try, run('mlbin/00_build_mcr.m'), catch e, e, end; quit"
+	docker image ls --format=json fwmrrcqa-mlbase > $@
 
-.gear: manifest.json .docker-ml
+## Flywheel
+.docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase
+	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab-python ./
+	docker image ls --format=json $(DOCKER_NAME) > $@
+
+.gear: manifest.json .docker-mlpy
 	# source /home/foranw/src/fw-beta-cli/.venv/bin/activate
-	fw-beta gear build .
+	fw-beta gear build . -- -f Dockerfile.matlab-python
 	date > $@
 
 config.json: .gear input/phantom_dicom/trunc.zip
@@ -34,6 +34,7 @@ config.json: .gear input/phantom_dicom/trunc.zip
 install: .gear-run.txt
 	fw-beta gear upload
 
+## DATA
 input/QA_PRISMA3QA_20240809_180204_160000/: | input/
 	curl -L "https://github.com/NPACore/fw-mrrcqa/releases/download/1.0.20240822_pre-alpa/QA_PRISMA3QA_20240809_180204_160000.zip" > input/QA_PRISMA3QA_20240809_180204_160000.zip
 	cd input && unzip QA_PRISMA3QA_20240809_180204_160000.zip
@@ -82,3 +83,16 @@ docs/snr_plot:
 
 Program/mask_structuring_elements.mat: Program/mask_structuring_elements.m
 	cd $(dir $@) && matlab -nodisplay -r 'try, run mask_structuring_elements; end; quit'
+
+## not needed with newer matlab.
+# see mlbin/00_build_mcr.m
+mlbin/qastats: Program/dostat.m 
+	mkdir -p $(dir $@)
+	cd $(dir $@) && $(MCC) -m ../$? -o $(notdir $@)
+
+mlbin/installer_input.txt: mlbin/qastats
+	cd $(dir $@) && matlab -r "try, run('buildcontainer'); catch e,e,end; quit"
+
+.docker-ml.large-hand-built: Dockerfile.matlab mlbin/qastats
+	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab ./
+	date > $@

@@ -27,6 +27,7 @@ The python code to write to FW's database was modernized from the very helpful
 
 20250404WF - updated to use context.output_dir instead of hard coded '/flywheel/v0/outputs'
              and created the MockContext class to deal with increasing number of mocked things
+20260105WF - add option to use compiled (no lic) matlab instead of octave
 """
 
 import sys
@@ -34,8 +35,6 @@ import os
 import subprocess
 import json  # for reading matlab output
 import flywheel
-#import nibabel as nib
-#import numpy as np
 
 
 def update_db(context: flywheel.GearContext):
@@ -139,12 +138,25 @@ def main():
 
     # print(f"env: nii {os.environ.get('phantom_nifti')}") # None
     # print(f"config: {context.config.get('phantom_nifti')}") # None
-
     print(f"input path: '{input_path}'")
+
+    # matlab's a lot faster than octave
+    # use it (dostat) when it exists (mlbin/00_build_mcr.m)
+    # dostat has extra argument
+    ml_program = "/usr/bin/mlrtapp/dostat"
+    octave_program = "/flywheel/v0/QC.m"
+    if os.path.isfile(ml_program):
+        qc_program = ml_program 
+        input_args = ["/flywheel/v0/work/dicoms/", 0, context.output_dir]
+    else:
+        qc_program = octave_program
+        input_args = ["/flywheel/v0/work/dicoms/",   context.output_dir]
+
+    print(f"qc program: '{qc_program}'")
 
     os.makedirs("/flywheel/v0/work/", exist_ok=True)
     subprocess.run(["unzip", "-j", "-d", "/flywheel/v0/work/dicoms/", input_path], check=True)
-    subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", context.output_dir])
+    subprocess.run([qc_program, *input_args])
     # 20250312: no outputs?!
     subprocess.run(["ls", "-R", context.output_dir])
 
