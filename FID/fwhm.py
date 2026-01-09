@@ -9,6 +9,26 @@ Can also be used as a file-curator flywheel gear
 import numpy as np
 import coil
 import pydicom
+import re
+import json
+import logging
+from zipfile import ZipFile
+from tempfile import NamedTemporaryFile
+from typing import Any, Dict
+
+try:
+    import flywheel
+except ImportError:
+    flywheel = None
+
+# Dont require flywheel. Mock if MIA
+# will only be used by file-curator gear
+try:
+    from flywheel_gear_toolkit.utils.curator import FileCurator
+except ImportError:
+    class FileCurator:
+        def __init__(self, **kwargs):
+            pass
 
 
 def fid_fwhm(dcm, plot=True):
@@ -38,6 +58,93 @@ def fid_fwhm(dcm, plot=True):
         plt.show()
 
     return fwhm
+
+
+def first_dicom_from_zip(zfname: str) -> pydicom.Dataset:
+    """Dicom header for first file in zip
+    Read inplace via stream, without extracting zip."""
+
+    # HACK: expect zip, but special case if input is dicom
+    if not re.search(r".zip$", str(zfname)):
+        print(f"Not given a .zip, assuming file from single dicom acquisition")
+        return pydicom.dcmread(zfname)
+
+    with ZipFile(zfname) as zf:
+        for entry in zf.filelist:
+            if entry.file_size > 0:
+                with zf.open(entry.filename) as fh:
+                    return pydicom.dcmread(fh)
+    raise ValueError("No valid DICOM found in zip.")
+
+
+def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
+    """Add FWHM to FW DB as 'fwhm' in session.
+    :param acq_id: Flywheel acquisition ID
+    :param fwhm: FWHM value to store
+    :param client: Flywheel client (optional)
+    :return: True if updated, False if skipped or failed
+    """
+    if not flywheel or not client:
+        logging.warning("Flywheel not available or no client, skipping DB update")
+        return False
+        
+    try:
+        acq = client.get(acq_id)
+        ses = client.get(acq.session)
+        
+        # Check if FWHM already exists
+        if ses.info.get('fwhm'):
+            logging.info("skipping %s, already have fwhm: %s", ses.label, ses.info.get('fwhm'))
+            return False
+        
+        # Update session info with FWHM
+        new_info = {'fwhm': fwhm}
+        ses.update_info(new_info)
+        logging.info("Updated session %s with fwhm: %f", ses.label, fwhm)
+        return True
+        
+    except Exception as e:
+        logging.error("Failed to update DB for acquisition %s: %s", acq_id, e)
+        return False
+
+
+class Curate(FileCurator):
+    """
+    Extend flywheels class to integrate with the file-curate gear.
+    py:func:`Curate.curate_file` is launch point for file-curator when run as a gear.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.reporter = None
+
+    def curate_file(self, file_: Dict[str, Any]):
+        """
+        This is "main" analog when used with file-curate gear.
+
+        @param file_ is **dict** holding file curator (gear rule) info.
+                     ["location"]["path"] is the dicom zip input file
+
+        "additional-input-one" in get_input_path is
+        whatever the user specifies AFTER specifying this python file (fwhm.py).
+
+        _file looks like
+        .. code:
+
+           {'hierarchy': {'id': '6899c986fbeb05f0ba422e90', 'type': 'acquisition'},
+            'object': {'type': 'dicom', 'mimetype': 'application/zip', 'modality': 'MR', 'classification':.... },
+            'location': {'path': '/flywheel/v0/input/file-input/1.3.12.2.1107.5.2.43.167046.2025081106355462484301088.0.0.0.dicom.zip', 'name': '1.3.12.2.1107.5.2.43.167046.2025081106355462484301088.0.0.0.dicom.zip'},
+           'base': 'file'}
+        """
+        # Handle both zip files and direct DICOM files
+        file_path = file_["location"]["path"]
+        dcm = first_dicom_from_zip(file_path)
+        fwhm = fid_fwhm(dcm, plot=False)
+        print(f"FID FWHM\t{fwhm:2.3f}\t{file_path}")
+        
+        # Update flywheel database with FWHM value
+        acq_id = file_["hierarchy"]["id"]
+        update_fwhm_stat(acq_id, fwhm, self.client)
 
 
 if __name__ == "__main__":
