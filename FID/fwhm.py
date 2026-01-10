@@ -122,10 +122,10 @@ def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
         return False
 
 
-class Curate(FileCurator):
+class Curator(FileCurator):
     """
     Extend flywheels class to integrate with the file-curate gear.
-    py:func:`Curate.curate_file` is launch point for file-curator when run as a gear.
+    py:func:`Curator.curate_file` is launch point for file-curator when run as a gear.
     """
 
     def __init__(self, **kwargs):
