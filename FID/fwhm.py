@@ -10,22 +10,17 @@ import numpy as np
 import coil
 import pydicom
 import re
-import json
 import logging
 from zipfile import ZipFile
-from tempfile import NamedTemporaryFile
 from typing import Any, Dict
-
-try:
-    import flywheel
-except ImportError:
-    flywheel = None
 
 # Dont require flywheel. Mock if MIA
 # will only be used by file-curator gear
 try:
+    import flywheel
     from flywheel_gear_toolkit.utils.curator import FileCurator
 except ImportError:
+    flywheel = None
     class FileCurator:
         def __init__(self, **kwargs):
             pass
