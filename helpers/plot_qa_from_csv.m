@@ -116,19 +116,32 @@ end
 
 %set(gcf, 'Windowstyle', 'docked'); saveas(gcf,['DailyQA' date '.png'],'png'); 
 
-%% tempurature log -- todo? use what's areadly in phantomqc.csv
-P = 'tempurature_log.xlsx';
-if exist('./00_get_temp.bash','file'), system('./00_get_temp.bash'); end % makes temp tempurature_log.xlsx
-if ~ exist(P,'file'), P = '/Volumes/TWIX_RAID/temp log.xlsx'; end
-if ~ exist(P,'file'), error('No tempurature'); end
-Tdeg = readtable(P);
+%% tempurature log
+% previously pulled separeatly. now using what's aggregated in QC csv
 
-%          1       2         3         4       5        6
-name = {'DATE','PRISMA1','PRISMA2','PRISMA3','Var5','Comments'};   
-
+%P = '/Volumes/TWIX_RAID/temp log.xlsx';
+%if ~ exist(P,'file'),
+%   if exist('./00_get_temp.bash','file'), system('./00_get_temp.bash'); end % makes temp tempurature_log.xlsx
+%   P = 'tempurature_log.xlsx';
+%   if ~ exist(P,'file'), error('No tempurature'); end
+%end
+%Tdeg = readtable(P);
+%%          1       2         3         4       5        6
+%name = {'DATE','PRISMA1','PRISMA2','PRISMA3','Var5','Comments'};
+%
 legloc = {'southwest','northwest','southwest','northwest'};
-sname = 'Temperature(F)'; 
-figure(1); subplot(length(gidx)+1,1,i+1); plot(Tdeg{:,1},Tdeg{:,2},'r-x',Tdeg{:,1},Tdeg{:,3},'b-o',Tdeg{:,1},Tdeg{:,4},'g-s','LineWidth',2); 
+sname = 'Temperature(F)';
+figure(1); subplot(length(gidx)+1,1,i+1);
+% was
+%  plot(Tdeg{:,1},Tdeg{:,2},'r-x',Tdeg{:,1},Tdeg{:,3},'b-o',Tdeg{:,1},Tdeg{:,4},'g-s','LineWidth',2);
+for scanner = {{'Prisma1','r-x'},  {'Prisma2','b-o'},  {'Prisma3','g-s'}},
+   scanner = scanner{1};
+   % rows that are the current scanner AND valid value (not Temp=='NA')
+   s_idx = strcmp(scanner{1},T.scanner) & ~strcmp('NA',T.Temp);
+   temp = str2num(cell2mat(T.Temp(s_idx))); % undo 'NA' made all values a string, stored as cell
+   plot(T.DATE(s_idx), temp, scanner{2}); hold on
+end
+
 legend({'Prisma1','Prisma2','Prisma3'},'Location',legloc{1},'NumColumns',1); axis tight; ylabel(upper(sname),'FontSize',20); grid on;
 xlim(['01-Aug-2024',Tdeg{end,1}]);
 
