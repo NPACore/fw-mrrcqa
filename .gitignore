@@ -23,3 +23,6 @@ snr/hist_mode
 snr/local_bin
 output/*png
 output/*json
+helpers/*png
+helpers/*csv
+helpers/*pdf

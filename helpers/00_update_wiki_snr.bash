@@ -42,5 +42,5 @@ case "$(uname -a)" in
  *) # *crc*
    [[ $(uname -a) =~ crc ]] && module load python/ondemand-jupyter-python3.11 r
    source ../.venv/bin/activate # python3 -m venv ../.venv
-   ./plot.R;;
+   ./plots.R;;
 esac

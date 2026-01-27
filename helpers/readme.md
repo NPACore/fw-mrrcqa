@@ -2,7 +2,7 @@
 This directory contains auxiliary scripts to facilitate cleanup and export of the QC gear and data. 
 The scripts interface with Flywheel and the dokuwiki website.
 
-`00_update_wiki_snr.bash` is the main entry point that calls `plots.R`, used in cron like:
+`00_update_wiki_snr.bash` is the main entry point that calls `plots.R`, used in foranw@zeus cron like:
 
 ```
 0  8 *   *   *   /raidzeus/src/fw-mrrcqa/helpers/00_update_wiki_snr.bash

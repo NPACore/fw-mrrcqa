@@ -36,6 +36,7 @@ T = readtable(P);
 name = {'DATE','scanner','snr','alias','bkoff','tsnr','test','fwhm','Y','Z','X2','Y2','Z2','XY','S2','B0'};
 
 %
+T.DATE = datetime(T.DATE, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSS');
 Tsort = sortrows(T,'scanner');
 
 I1 = contains(Tsort.scanner,'Prisma1');
@@ -57,7 +58,7 @@ legloc = {'southwest','northwest','southwest','northwest','southwest','southwest
 lw = [2 2 2 2 2 2 2 2];
 for i=1:length(gidx)
     idx = gidx(i); sname = name{idx};
-    disp(['Plotting ' sname '(' num2str(idx) '); ' T.Properties.VariableNames(idx)]);
+    disp(['Plotting ' sname '(' num2str(idx) '); ' T.Properties.VariableNames{idx}]);
 
 
     bnumval = 0;
@@ -104,7 +105,7 @@ for i=1:length(gidx)
     else
         disp(['# ploting neither abs nor rel vals; ', mode(i)])
         figure(1); subplot(length(gidx)+1,1,i); 
-        p1mean = nanmean(T1{:,idx}),
+        p1mean = nanmean(T1{:,idx});
         plot(T1{:,1},(T1{:,idx}-p1mean)/p1mean*100,'r-',...
         T2{:,1},(T2{:,idx}-nanmean(T2{:,idx}))/nanmean(T2{:,idx})*100,'b-',...
         T3{:,1},(T3{:,idx}-nanmean(T3{:,idx}))/nanmean(T3{:,idx})*100,'g-',...
@@ -143,7 +144,7 @@ for scanner = {{'Prisma1','r-x'},  {'Prisma2','b-o'},  {'Prisma3','g-s'}},
 end
 
 legend({'Prisma1','Prisma2','Prisma3'},'Location',legloc{1},'NumColumns',1); axis tight; ylabel(upper(sname),'FontSize',20); grid on;
-xlim(['01-Aug-2024',Tdeg{end,1}]);
+xlim(['01-Aug-2024',max(T.DATE)]);
 
 
 %%
@@ -151,10 +152,15 @@ fprintf(2,'\nLatest scan date - %s\n', T1{end,1});
 figure(1); subplot(length(gidx)+1,1,1); title(sprintf('Latest scan date - %s', T1{end,1}),'FontSize',30);
 
 %%
-set(gcf, 'Windowstyle', 'docked'); %saveas(gcf,['DailyQA' date '.png'],'png');
-exportgraphics(gcf,['DailyQA' date '.png'],'Resolution',300);
-set(gcf, 'Windowstyle', 'docked'); %saveas(gcf,[pfolder filesep 'DailyQA' date '.png'],'png'); 
-exportgraphics(gcf,[pfolder filesep 'DailyQA' date '.png'],'Resolution',300);
+% set(gcf, 'Windowstyle', 'docked'); %saveas(gcf,['DailyQA' date '.png'],'png');
+%exportgraphics(gcf,['DailyQA' date '.png'],'Resolution',300);
+%set(gcf, 'Windowstyle', 'docked'); %saveas(gcf,[pfolder filesep 'DailyQA' date '.png'],'png'); 
+%exportgraphics(gcf,[pfolder filesep 'DailyQA' date '.png'],'Resolution',300);
+
+%% export w/R2019a
+fig_fname = [pfolder filesep 'DailyQA.png'];
+set(gcf,'PaperUnits','inches','PaperPosition',[0 0 8 11])
+print(gcf,fig_fname,"-dpng", '-r300')
 
 
 
