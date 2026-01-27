@@ -1,4 +1,15 @@
 #! /usr/bin/env python3
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "flywheel-sdk",
+# ]
+# ///
+##
+# uv run --script ./fw_run.py
+# needs ~/.config/flywheel/user.json  (via 'fw login')
+# 20260127: run on recontwix@recontwix
+
 """Run file-curate for FWHM
 across Prisma QA projects on flywheel
 
