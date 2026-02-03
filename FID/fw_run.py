@@ -24,6 +24,14 @@ from datetime import datetime
 
 import flywheel
 DRYRUN = os.environ.get("DRYRUN")
+MAX_FIN = int(os.environ.get("FID_MAX_FIN", 10)) #: 0 means no max
+QUIET = os.environ.get("QUIET")
+
+def verb(msg):
+     if QUIET:
+         return
+     print(msg)
+
 fw = flywheel.Client()
 gear = fw.lookup("gears/file-curator")
 gear_name = "file-curator"             # used to check if running
@@ -35,7 +43,7 @@ for p in ["Prisma1QA", "Prisma2QA", "Prisma3QA"]:
     "additional-input-one":  fw.files.find_one(f"project.label=~{p},name=~coil.py")}
 
 
-print(f"# starting {datetime.now()} (DRYRUN={DRYRUN})")
+verb(f"# starting {datetime.now()} (DRYRUN={DRYRUN})")
 def run_gear(inputs, tags=[]):
     """Configure and run MRRCQA gear"""
     config = {"debug": False}
@@ -46,8 +54,9 @@ def run_gear(inputs, tags=[]):
 
 # Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.snr
 files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~qa_fid,name=~dcm', limit=1e10)
-print(f"# {datetime.now()} found {len(files)} acq.label ep2d_bold zip files")
+verb(f"# {datetime.now()} found {len(files)} acq.label ep2d_bold zip files")
 i = 0
+already_fin = 0
 for f in reversed(files):
     i += 1
 
@@ -55,13 +64,20 @@ for f in reversed(files):
     ses = fw.get(f.parents['session'])
 
     if re.search('_uc_upw', acq.label):
-        print(f"SKIP: {f.acquisition.label} is un-combined")
+        verb(f"SKIP: {f.acquisition.label} is un-combined")
 
     project = fw.get(ses.parents.project).label
 
-    print(f"# {i}/{len(files)} running for {ses.subject.code} {project} {ses.label} {f.name}")
+    verb(f"# {i}/{len(files)} running for {ses.subject.code} {project} {ses.label} {f.name}")
     if val := ses.info.get('fwhm'):
-        print(f"# Already have fwhm: {val}")
+        verb(f"# Already have fwhm: {val}")
+
+        # dont do this forever if everythings finished
+        already_fin = already_fin + 1
+        if already_fin >= MAX_FIN and MAX_FIN > 0:
+            verb(f"# Seen {MAX_FIN} already complete. Exitting. Continue instead by setting environ: FID_MAX_FIN=0")
+            break
+
         continue
     # can skip if a sufficnetly new gear has been run
     # TODO: use ses objec to find db fwhm
@@ -82,7 +98,7 @@ for f in reversed(files):
     #  TODO: get all jobs first and then 'acq.id in [x.parents.acquisition in jobs]' instead of search each time?
     running = fw.jobs.find(f'state=running,gear_info.name=~{gear_name},parents.acquisition={acq.id}')
     if len(running) > 0:
-        print(f"# SKIP! {project}/{ses.label} acq='{acq.label}' running as {running[0].id}")
+        verb(f"# SKIP! {project}/{ses.label} acq='{acq.label}' running as {running[0].id}")
         continue
 
     #if 'stats.json' in [x.name for x in acq.files]:
