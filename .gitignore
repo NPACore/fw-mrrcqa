@@ -26,3 +26,4 @@ output/*json
 helpers/*png
 helpers/*csv
 helpers/*pdf
+helpers/WeekStats-FWHM.txt
