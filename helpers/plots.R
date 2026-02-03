@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # guix shell python r r-reticulate r-pacman r-dplyr r-tidyr r-ggplot2 -- ./plots.R
 if(! 'pacman' %in% installed.packages()) install.packages('pacman')
-pacman::p_load(dplyr, tidyr, ggplot2, reticulate, ggrepel, cowplot, lubridate)
+pacman::p_load(dplyr, tidyr, ggplot2, reticulate, ggrepel, cowplot, lubridate, readxl)
 use_virtualenv("../.venv")
 
 # read in from excel sheets. one per scanner
