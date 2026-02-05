@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "flywheel-sdk",
+#     "seaborn",
+# ]
+# ///
 """
 Pull ``snr`` from flywheel session data containers (info.snr).
 Put there by the fw-mrrcqc gear or :py:func:`helpers.dbupdater`
