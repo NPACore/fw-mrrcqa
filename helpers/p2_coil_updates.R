@@ -14,13 +14,15 @@ env_or_default <- function(envvar, defaults) {
 # Sys.setenv(MEASURES="fwhm"); 
 scanners <- env_or_default("SCANNERS", c("Prisma2"))
 measures <- env_or_default("MEASURES", c("tsnr"))
+use_lastweek <- env_or_default("LASTWEEK", "1")
 
 csv_url <- "https://wiki.mrrc.pitt.edu/lib/exe/fetch.php?media=phantomqc.csv"
 
 events <- c(visual_fail=ymd('2024-11-04'),
             new_tx     =ymd('2025-08-04'),
-            new_body   =ymd('2025-10-08'),
-            last_week = today() - days(7))
+            new_body   =ymd('2025-10-08'))
+# maybe we want just the specified events?
+if(use_lastweek == "1") events <- c(events, last_week = today() - days(7))
 
 
 # Pitt's subdomain cert is suspect, ignore HTTPS/SSL security  
