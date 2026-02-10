@@ -41,6 +41,9 @@ case "$(uname -a)" in
      ./plots.R;;
  with-uv*) # doesn't work. reticulate doesn't carry uv venv
 	 uv run --with seaborn --with flywheel-sdk ./plots.R ;;
+  reese*)
+    # already ran 'guix shell --pure coreutils python@3.11 -- sh -c 'python3 -m venv .venv-3.11 &&  source .venv-3.11/bin/activate && pip install seaborn flywheel-sdk'
+    guix shell coreutils python@3.11 r r-ggrepel r-pacman r-reticulate r-dplyr r-tidyr r-ggplot2 r-lubridate r-lubridate r-cowplot r-readxl --pure -- Rscript plots.R;;
  *) # *crc*
    [[ $(uname -a) =~ crc ]] && module load python/ondemand-jupyter-python3.11 r
    source ../.venv/bin/activate # python3 -m venv ../.venv

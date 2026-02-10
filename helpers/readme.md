@@ -2,6 +2,17 @@
 This directory contains auxiliary scripts to facilitate cleanup and export of the QC gear and data. 
 The scripts interface with Flywheel, the dokuwiki website, and the conference room.
 
+## Pipeline
+
+ 1. QA scan
+ 2. PACS upload to flywheel
+ 3. gear rule triggers via file-curator: fwhm.py;  shim_notify.py (session 'z'); qc_launch.py (fw-mrrcqa gear)
+    - ../FID/fwhm.py
+    - ../Program/run.py
+    - https://github.com/NPACore/file-curator.git
+ 4. cron pull of db into summary files: csv file, R plot, matlab plot
+    - ./00_update_wiki_snr.bash
+ 5. upload to summary files to wiki
 
 ## Flywheel catch up
 `01_flywheel_hpc_mrrcqa.bash` catches any missed flywheel gear triggers for both the FID file-curator ([`../FID`](../FID)) and the fw-mrrcqa gear.
