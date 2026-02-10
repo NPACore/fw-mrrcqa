@@ -1,7 +1,7 @@
 %
 % Load phantomqc.csv
 % CHM @20240421
-%
+% WF @20260210 - add X and Y
 
 %{
 0. Mount "moonc@10.48.88.117/barracuda2"
@@ -24,7 +24,7 @@ strxlim = ['01-Aug-2024' strdate];
 %%
 P = fullfile(pfolder,fname);
 system(['LD_LIBRARY_PATH= curl -k "https://wiki.mrrc.pitt.edu/lib/exe/fetch.php?media=phantomqc.csv" > ', P]);
-T = readtable(P);
+T = readtable(P); %, 'TreatAsMissing', 'NA');
 %T.DATE
 %T.scanner
 %T.snr
@@ -32,8 +32,9 @@ T = readtable(P);
 
 %         1       2        3      4       5       6    7   8   9    10   11   12   13   14           
 %name = {'DATE','scanner','snr','alias','bkoff','tsnr','Y','Z','X2','Y2','Z2','XY','S2','B0'};
-%         1       2        3      4       5       6      7      8    9   10  11   12   13   14   15   16          
-name = {'DATE','scanner','snr','alias','bkoff','tsnr','test','fwhm','Y','Z','X2','Y2','Z2','XY','S2','B0'};
+%         1       2        3      4       5       6      7      8     9   10  11   12   13   14   15   16  17        
+name = {'DATE','scanner','snr','alias','bkoff','tsnr','test','fwhm', 'X', 'Y','Z','X2','Y2','Z2','XY','S2','B0'};
+% TODO: use T.Properties.VariableNames instead
 
 %
 T.DATE = datetime(T.DATE, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSS');
@@ -51,13 +52,18 @@ T3 = Tsort(I3==1,:);
 % Display
 %gidx = [3 6 8 14 4 5]; %snr, tsnr, Z, B0, alias, bkoff
 % gidx = [3 6 10 16 4 5 8]; %snr, tsnr, Z, B0, alias, bkoff, fwhm
-gidx = arrayfun(@(col) find(strcmp(col, T.Properties.VariableNames)), {'snr','tsnr', 'Z', 'B0', 'alias', 'bkoff', 'fwhm'});
+meas_to_plot = {'snr','tsnr', 'X','Y', 'Z', 'B0', 'alias', 'bkoff', 'fwhm'};
+gidx = arrayfun(@(col) find(strcmp(col, T.Properties.VariableNames)), ...
+                meas_to_plot);
 % also see: Temp
-mode = [0 0 2  2 0 0 0]; %0-abolute; 2-percent
-legloc = {'southwest','northwest','southwest','northwest','southwest','southwest','southwest'};
-lw = [2 2 2 2 2 2 2 2];
+legloc = {'southwest','northwest','southwest','northwest','southwest',...
+          'southwest','southwest','southwest','southwest','southwest', ...
+          'southwest'};
+lw = [2 2 2 2 2 2 2 2 2 2 2];
+%mode = [0 0 2  2 0 0 0]; %0-abolute; 2-percent
 for i=1:length(gidx)
-    idx = gidx(i); sname = name{idx};
+    idx = gidx(i);
+    sname = name{idx}; % TODO: should be T.Properties.VariableNames{idx}
     disp(['Plotting ' sname '(' num2str(idx) '); ' T.Properties.VariableNames{idx}]);
 
 
@@ -105,12 +111,20 @@ for i=1:length(gidx)
     else
         disp(['# ploting neither abs nor rel vals; ', mode(i)])
         figure(1); subplot(length(gidx)+1,1,i); 
-        p1mean = nanmean(T1{:,idx});
-        plot(T1{:,1},(T1{:,idx}-p1mean)/p1mean*100,'r-',...
-        T2{:,1},(T2{:,idx}-nanmean(T2{:,idx}))/nanmean(T2{:,idx})*100,'b-',...
-        T3{:,1},(T3{:,idx}-nanmean(T3{:,idx}))/nanmean(T3{:,idx})*100,'g-',...
-        'LineWidth',lw(i)); 
-        legend({'Prisma1','Prisma2','Prisma3'},'Location',legloc{i},'NumColumns',1); axis tight; ylabel([upper(sname) '(%)'],'FontSize',20); grid on;
+        prct = @(x) (x-nanmean(x))/nanmean(x)*100;
+        T1val = prct(na0(T1{:,idx})); T2val = prct(na0(T2{:,idx})); T3val = prct(na0(T3{:,idx}));
+        plot(T1{:,1},T1val,'r-',...
+             T2{:,1},T2val,'b-',...
+             T3{:,1},T3val,'g-',...
+             'LineWidth',lw(i)); 
+        if i < 2 % 20260210 don't need line legend on every plot?
+            legend({'Prisma1','Prisma2','Prisma3'},...
+                'Location',legloc{i},...
+                'NumColumns',1);
+        end
+        axis tight;
+        ylabel([upper(sname) '(%)'],'FontSize',20);
+        grid on;
         xlim(strxlim);
     end
 end
