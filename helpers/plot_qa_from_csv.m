@@ -53,80 +53,59 @@ T3 = Tsort(I3==1,:);
 %gidx = [3 6 8 14 4 5]; %snr, tsnr, Z, B0, alias, bkoff
 % gidx = [3 6 10 16 4 5 8]; %snr, tsnr, Z, B0, alias, bkoff, fwhm
 meas_to_plot = {'snr','tsnr', 'X','Y', 'Z', 'B0', 'alias', 'bkoff', 'fwhm'};
+mode         = [   0      0    0    0    0     0       0        0        0]; %0-abolute; 2-percent
+lw           = [2 2 2 2 2 2 2 2 2 2 2];
 gidx = arrayfun(@(col) find(strcmp(col, T.Properties.VariableNames)), ...
                 meas_to_plot);
+
 % also see: Temp
 legloc = {'southwest','northwest','southwest','northwest','southwest',...
           'southwest','southwest','southwest','southwest','southwest', ...
           'southwest'};
-lw = [2 2 2 2 2 2 2 2 2 2 2];
 %mode = [0 0 2  2 0 0 0]; %0-abolute; 2-percent
 for i=1:length(gidx)
     idx = gidx(i);
-    sname = name{idx}; % TODO: should be T.Properties.VariableNames{idx}
-    disp(['Plotting ' sname '(' num2str(idx) '); ' T.Properties.VariableNames{idx}]);
+    sname = T.Properties.VariableNames{idx};
+    disp(['Plotting (' num2str(idx) '); ' sname]);
 
 
-    bnumval = 0;
-    if contains(class(T1{:,idx}),{'cell'})
-        nl = length(T1{:,idx});
-        T1val = ones(nl,1);
-        for l=1:nl
-            strtmp = T1{:,idx}{l}; if contains(strtmp,{'NA' 'na'}), T1val(l) = 0; else T1val(l) = str2num(strtmp);  end
-        end
-        bnumval = 1;
-    end
-    if contains(class(T2{:,idx}),{'cell'})
-        nl = length(T2{:,idx});
-        T2val = ones(nl,1);
-        for l=1:nl
-            strtmp = T2{:,idx}{l}; if contains(strtmp,{'NA' 'na'}), T2val(l) = 0; else T2val(l) = str2num(strtmp);  end
-        end
-        bnumval = 1;
-    end
-    if contains(class(T3{:,idx}),{'cell'})
-        nl = length(T3{:,idx});
-        T3val = ones(nl,1);
-        for l=1:nl
-            strtmp = T3{:,idx}{l}; if contains(strtmp,{'NA' 'na'}), T3val(l) = 0; else T3val(l) = str2num(strtmp);  end
-        end
-        bnumval = 1;
-    end
+    % NA->0 for old matlab missing readtable's 'TreatAsMissing'
+    T1val = na0(T1{:,idx});
+    T2val = na0(T2{:,idx});
+    T3val = na0(T3{:,idx});
 
+    % different values show differently.most by percent of mean
+    mean_rel = @(x) x-nanmean(x);
+    prct = @(x) (x-nanmean(x))/nanmean(x)*100;
     if mode(i)==0
         disp('# ploting abs vals')
-        if bnumval==0
-            figure(1); subplot(length(gidx)+1,1,i); plot(T1{:,1},T1{:,idx},'r-',T2{:,1},T2{:,idx},'b-',T3{:,1},T3{:,idx},'g-','LineWidth',lw(i)); 
-        else
-            figure(1); subplot(length(gidx)+1,1,i); plot(T1{:,1},T1val,'r-',T2{:,1},T2val,'b-',T3{:,1},T3val,'g-','LineWidth',lw(i)); 
-        end
-
-        legend({'Prisma1','Prisma2','Prisma3'},'Location',legloc{i},'NumColumns',1); axis tight; ylabel(upper(sname),'FontSize',20); grid on;
-        xlim(strxlim);
+        ylabel_str = upper(sname);
+        pfunc = @(x) x;
     elseif mode(i)==1
         disp('# ploting rel vals')
-        figure(1); subplot(length(gidx)+1,1,i); plot(T1{:,1},T1{:,idx}-mean(T1{:,idx}),'r-',T2{:,1},T2{:,idx}-mean(T2{:,idx}),'b-',T3{:,1},T3{:,idx}-mean(T3{:,idx}),'g-','LineWidth',lw(i)); 
-        legend({'Prisma1','Prisma2','Prisma3'},'Location',legloc{i},'NumColumns',1); axis tight; ylabel([upper(sname) ' - mean(' upper(sname) ')'],'FontSize',20); grid on;
-        xlim(strxlim);
+        ylabel_str = [upper(sname) ' - mean(' upper(sname) ')'];
+        pfunc=mean_rel;
     else
-        disp(['# ploting neither abs nor rel vals; ', mode(i)])
-        figure(1); subplot(length(gidx)+1,1,i); 
-        prct = @(x) (x-nanmean(x))/nanmean(x)*100;
-        T1val = prct(na0(T1{:,idx})); T2val = prct(na0(T2{:,idx})); T3val = prct(na0(T3{:,idx}));
-        plot(T1{:,1},T1val,'r-',...
-             T2{:,1},T2val,'b-',...
-             T3{:,1},T3val,'g-',...
-             'LineWidth',lw(i)); 
-        if i < 2 % 20260210 don't need line legend on every plot?
-            legend({'Prisma1','Prisma2','Prisma3'},...
-                'Location',legloc{i},...
-                'NumColumns',1);
-        end
-        axis tight;
-        ylabel([upper(sname) '(%)'],'FontSize',20);
-        grid on;
-        xlim(strxlim);
+        fprintf('# ploting percent values (mode=%s)\n', mode(i));
+        ylabel_str = [upper(sname) ' (%)'];
+        pfunc=prct;
     end
+
+    % PLOT
+    figure(1); subplot(length(gidx)+1,1,i); 
+    plot(T1{:,1},pfunc(T1val),'r-',...
+         T2{:,1},pfunc(T2val),'b-',...
+         T3{:,1},pfunc(T3val),'g-',...
+         'LineWidth',lw(i)); 
+    if i < 2 % 20260210 don't need line legend on every plot?
+        legend({'Prisma1','Prisma2','Prisma3'},...
+            'Location',legloc{i},...
+            'NumColumns',1);
+    end
+    axis tight;
+    ylabel(ylabel_str,'FontSize',20);
+    grid on;
+    xlim(strxlim);
 end
 
 %set(gcf, 'Windowstyle', 'docked'); saveas(gcf,['DailyQA' date '.png'],'png'); 
