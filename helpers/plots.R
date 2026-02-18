@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 # guix shell python r r-reticulate r-pacman r-dplyr r-tidyr r-ggplot2 -- ./plots.R
 if(! 'pacman' %in% installed.packages()) install.packages('pacman')
-pacman::p_load(dplyr, tidyr, ggplot2, reticulate, ggrepel, cowplot, lubridate)
-use_virtualenv("../.venv")
+pacman::p_load(dplyr, tidyr, ggplot2, reticulate, ggrepel, cowplot, lubridate, readxl)
+venv_dir <-ifelse(dir.exists('.venv-3.11'),'./.venv-3.11','../.venv')
+use_virtualenv(venv_dir)
 
 # read in from excel sheets. one per scanner
 read_excel <- function(xls_fname='../v2/20250312/DailyQA.xlsx') {
@@ -19,16 +20,18 @@ read_flywheel <- function(){
     fname <- tempfile("fw_snr", fileext = c(".csv"))
     snr_py <- import("snr_from_db")
     snr_py$SNR()$all_shim_and_snr_csv(fname)
+    # alternatively:
+    #   uv run --script snr_from_db.py --csv /tmp/flywheel_qa_db.csv
 
     # to match excel, DATE only has day (no time). no index
     d <- read.csv(fname) |>
-        select(-X) |>
+        select(-matches("X.1")) |> # fix(20260206): do want 'X' shim value. do not want X.1 the empty row name
         rename(DATE=date)
         # 20250625 - have more than one per day. give up on matching excel by date
         # |> mutate(DATE=gsub(' .*','',DATE))
 
     # names are
-    # c("X.1", "snr", "alias", "bkoff", "tsnr", "DATE", "scanner", "test", "Y", "Z", "X2", "Y2", "Z2", "XY", "S2", "B0")
+    # c("snr", "alias", "bkoff", "tsnr", "DATE", "scanner", "test","X", "Y", "Z", "X2", "Y2", "Z2", "XY", "S2", "B0")
     unlink(fname)
     return(d)
 }
@@ -202,4 +205,3 @@ compare_excel_fw <- function(d, d.x) {
 
 # if run by script, not sourced
 if (sys.nframe() == 0) main()
-

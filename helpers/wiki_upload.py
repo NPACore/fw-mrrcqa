@@ -127,15 +127,16 @@ class DokuWiki:
         return res
 
 
-def upload_snr(img_path: str):
+def upload_snr(img_path: str, wiki_name="mrrc_prismas_snr.png"):
     """
     Wrap py:func:`DokuWiki.upload_file` to specifically upload SNR.
     username and password are pulled from py:func:`set_creds` defaults (npac w/'pass' cmd)
     :param img_path: path of image to upload. likely a temporary file. See snr_from_db.py
+    :param wiki_name: name for binary file (png) on wiki
     """
 
     dw = DokuWiki("https://wiki.mrrc.pitt.edu/")
-    return dw.upload_file(img_path, wiki_name="mrrc_prismas_snr.png")
+    return dw.upload_file(img_path, wiki_name=wiki_name)
 
 
 if __name__ == "__main__":
@@ -144,5 +145,6 @@ if __name__ == "__main__":
     # upload first argument if given (eg '/tmp/snr.png')
     # otherwise use default
     to_upload = "PhantomQC.png" if len(sys.argv) < 2 else sys.argv[1]
+    upload_as = "mrrc_prismas_snr.png" if len(sys.argv) < 3 else sys.argv[2]
 
-    upload_snr(to_upload)
+    upload_snr(to_upload, upload_as)

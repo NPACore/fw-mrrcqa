@@ -25,10 +25,10 @@ def read_item(csa: dict, el: str):
         return None
     return valdict['items'][0]
 
-def fft_signal(dcm: pydicom.pydicom) -> np.ndarray:
+def fft_signal(dcm) -> np.ndarray:
     """
     extract FFT from FID acquisition in dicom's private CSA header
-    :param f: input dicom file
+    :param dcm: pydicom.pydicom object. [cannot type in signature b/c FW pydicom is old]
     :return: np.complex128 (2048,)
     """
     csa_fft = dcm.get_item((0x7fe1,0x1010))
