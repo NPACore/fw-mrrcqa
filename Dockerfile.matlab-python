@@ -17,6 +17,10 @@ RUN apt update -y \
 ENV FLYWHEEL=/flywheel/v0
 RUN mkdir -p ${FLYWHEEL} && chmod a+rwx ${FLYWHEEL}
 # set back to user. but doesn't matter?
-USER 1000:1000
+# 20260221 - disable. problem with work directory permissions
+#USER 1000:1000
 COPY Program/run.py ${FLYWHEEL}/run.py
+# NB. flywheel will always manually set entrypoing to run.py
+#     could use 'dostat' as entry for non-flywheel usage
+#     dostats takes 
 ENTRYPOINT ["/usr/bin/mlrtapp/dostat"]

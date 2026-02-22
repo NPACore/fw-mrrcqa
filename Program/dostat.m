@@ -6,6 +6,13 @@ function [stat] = dostat(pfolder,bfig, outdir)
 %
 clear all;
 %}
+if nargin == 0
+   disp('USAGE: dostats /path/to/dicomdir 0 /path/to/savedir')
+   disp('  "0" can be "1" to save a figure and mask information')
+   disp('  also see run.py (/flywheel/v0/run.py in container)')
+   error('bad arguments')
+end
+
 calc_start_time = tic;
 % load depends if running octave
 % see 'pkg install dicom -forge' or e.g. 'yay -S octave-dicom' (needs GDCM lib)
@@ -367,9 +374,10 @@ stat.calc_dur = toc(calc_start_time);
 %% Saving
 % 20251211 - moved from QC.m to here
 if nargin > 2
-   if ~exist(output_dir,'dir'), mkdir(output_dir); end
-   json_str = jsonencode(dcm_stats);
-   fprintf('saving %d chars of json to %s\n', length(json_str), json_outfile);
+   json_outfile = fullfile(outdir, 'stats.json');
+   if ~exist(outdir,'dir'), mkdir(outdir); end
+   json_str = jsonencode(stat);
+   fprintf('# saving %d chars of json to %s\n', length(json_str), json_outfile);
    fid = fopen(json_outfile,'w');
    fprintf(fid, '%s', json_str);
    fclose(fid);

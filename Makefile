@@ -9,12 +9,12 @@ all: .gear-run.txt
 	docker build -t $(DOCKER_NAME)-octave -f Dockerfile ./
 	date > $@
 
-.docker-mlbase: Program/dostat.m 
-	matlab -r "try, run('mlbin/00_build_mcr.m'), catch e, e, end; quit"
+.docker-mlbase: Program/dostat.m  mlbin/build_mrc_container.m
+	matlab -r "try, run('mlbin/build_mrc_container.m'), catch e, e, end; quit"
 	docker image ls --format=json fwmrrcqa-mlbase > $@
 
 ## Flywheel
-.docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase
+.docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase matlab-test
 	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab-python ./
 	docker image ls --format=json $(DOCKER_NAME) > $@
 
@@ -57,7 +57,24 @@ input/phantom_dicom/trunc.zip: input/trunc/
 test: Program/readshimvalues.m Program/find_all_dicoms.m input/trunc/
 	cd Program/ && octave --eval "test readshimvalues; test find_all_dicoms;" #|& tee ../$@
 
-test-docker: .docker
+# confirm matlab code works as expected. useful before rebuilding docker container
+matlab-test: .make/mltest/stats.json
+.make/mltest/stats.json: Program/dostat.m input/QA_PRISMA3QA_20240809_180204_160000/ | output/mltest/
+	matlab -nodisplay -r 'try, cd Program; dostat ../input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/ 0 ../.make/mltest; catch e, disp(e); end; quit'
+	# try/cach so matlab doesn't exist with error if failed?
+	test -r $@
+
+# faster (but larger) matlab based
+test-docker-mlpy:  .make/docker-mlpy-test.log
+.make/docker-mlpy-test.log: .docker-mlpy | .make/ input/trunc/
+	docker run --entrypoint=/flywheel/v0/run.py -v $(PWD)/input:/flywheel/input:ro -v $(PWD)/$(dir $@):/flywheel/v0/work/  --rm $(DOCKER_NAME) /flywheel/input/QA_PRISMA3QA_20240809_180204_160000.zip | tee $@
+# also see
+# docker run -it --entrypoint=bash -v /home/foranw/src/fw-mrrcqa/input:/flywheel/input:ro -v /home/foranw/src/fw-mrrcqa/.make/:/flywheel/v0/work/  --rm npac/mrrcqa-ml:1.5.1.20260105
+# OUTDIR=/tmp/tsnr WORKDIR=/tmp/tsnr/work ML_PROGRAM=mlbin/fwmrrcqa-mlbasedocker/applicationFilesForMATLABCompiler/run_dostat.sh  ./Program/run.py input/QA_PRISMA3QA_20240809_180204_160000.zip
+
+
+# old original docker
+test-docker-octave: .docker-octave
 	docker run -v $(PWD)/input:/flywheel/input:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"
 
 local_bin/:

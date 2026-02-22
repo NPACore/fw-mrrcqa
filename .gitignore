@@ -1,5 +1,6 @@
 # makefile flag files
-.docker
+.make
+.docker*
 .gear
 .gear-run.txt
 .*m
