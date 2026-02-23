@@ -106,6 +106,22 @@ via [SO](https://stackoverflow.com/questions/23935141/how-to-copy-docker-images-
 ```
 docker save localhost/npac/mrrcqa:1.1.20250312.01 | bzip2 | pv | ssh r docker load
 ```
+### Load/Push to avoid firewall
+
+We can use VM on the same host as fw-core (hosting docker registry) to work around enterprise firewall blocking `gear upload`/`docker push`
+
+```
+image=fw.mrrc.upmc.edu/mrrcqa:1.5.2.20260221
+docker save $image | pv | ssh -J z fw-analysis docker load
+# ssh -J z fw-analysis docker push $image  # push alone not sufficent?
+ssh z virsh console docker-test
+#   docker load -i $image_path
+#   docker push $image
+#   cd fw-mrcqa
+#   ~/.fw/fw-beta gear upload
+```
+
+see `flatten-docker.sh` for removing layers and transferring. Needed to resolve unsupported NFS `/var/lib/docker` mount on testing VM with xattr on files (from matlab base image).
 
 ### mitmproxy: debug firewall
 ```

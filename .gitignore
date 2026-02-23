@@ -29,3 +29,4 @@ helpers/*csv
 helpers/*pdf
 helpers/WeekStats-FWHM.txt
 mlbin/*/
+*.tar.bz2
