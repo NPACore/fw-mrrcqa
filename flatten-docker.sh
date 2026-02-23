@@ -15,3 +15,6 @@ docker save $image_out | bzip2 > $save_as.tar.bz2
 # ssh -t z virsh console docker-test
 #   docker load -i /raidzeus/flywheel/mrrcqa.1.5.2.20260221.tar.bz2
 #   docker push fw.mrrc.upmc.edu/mrrcqa:1.5.2.20260221
+#   docker image tag fw.mrrc.upmc.edu/mrrcqa:1.5.2.20260221 npac/mrrcqa-ml:1.5.2.20260221
+#   cd ~/src/fw-mrrcqa
+#   ~/.fw/fw-beta gear upload

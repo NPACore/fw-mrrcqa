@@ -118,6 +118,8 @@ ssh z virsh console docker-test
 #   docker load -i $image_path
 #   docker push $image
 #   cd fw-mrcqa
+#   # update tag to match manifest input
+#   docker image tag fw.mrrc.upmc.edu/mrrcqa:1.5.2.20260221 npac/mrrcqa-ml:1.5.2.20260221
 #   ~/.fw/fw-beta gear upload
 ```
 
