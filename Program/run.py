@@ -176,6 +176,16 @@ def main():
     if os.path.isfile(ml_program):
         qc_program = ml_program 
         input_args = [work_dir, "0", context.output_dir]
+
+        # check LD_PATH has matlab
+        # work around singulairty stripping enviornments?
+        # libmwlaunchermain.so: cannot open shared object file
+        # hard coded path mathces container's
+        current_ldpath = os.environ.get("LD_LIBRARY_PATH","")
+        if not "glnxa64" in current_ldpath:
+            warnings.warn(f"LD_LIBRARY_PATH doesn't have matlab!? '{current_ldpath}'. Adding")
+            os.environ["LD_LIBRARY_PATH"]= (current_ldpath + ":" if current_ldpath else "" ) + \
+                    "/opt/matlabruntime/R2024a/runtime/glnxa64:/opt/matlabruntime/R2024a/bin/glnxa64:/opt/matlabruntime/R2024a/sys/os/glnxa64:/opt/matlabruntime/R2024a/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024a/extern/bin/glnxa64"
     else:
         qc_program = octave_program
         input_args = [work_dir,   context.output_dir]
