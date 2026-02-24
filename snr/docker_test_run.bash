@@ -1,3 +1,4 @@
+mkdir ../outputs/ants_docker -p
 docker run --entrypoint /flywheel/v0/QA_ants.bash \
    -v $PWD/../input/:/input \
    -v $PWD/../outputs/ants_docker:/outputs/ \
