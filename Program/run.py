@@ -27,15 +27,15 @@ The python code to write to FW's database was modernized from the very helpful
 
 20250404WF - updated to use context.output_dir instead of hard coded '/flywheel/v0/outputs'
              and created the MockContext class to deal with increasing number of mocked things
+20260105WF - add option to use compiled (no lic) matlab instead of octave
 """
 
 import sys
 import os
 import subprocess
 import json  # for reading matlab output
+import warnings
 import flywheel
-#import nibabel as nib
-#import numpy as np
 
 
 def update_db(context: flywheel.GearContext):
@@ -72,16 +72,24 @@ class MockContext():
     """
     destination = {'id': None}
     config = {"phantom_dicom": None, "write_db": False, "key": None}
-    output_dir = '/flywheel/v0/outputs/'  # default output location
 
     def __init__(self, input_path):
-        self.client = flywheel.Client()
+        try:
+            self.client = flywheel.Client()
+        except:
+            warnings.warn("Flywheel auth failed. Not connecting to external server. Just testing?")
+            self.client = None
 
         # update gear config to be either the downloaded zip file
         # or original input file (zip)
         #input_path = self.maybe_download(input_path)
 
         self.config["phantom_dicom"] = input_path
+        self.output_dir = os.environ.get("OUTDIR",'/flywheel/v0/outputs/')  # default output location
+
+    def test_client(self):
+        if not self.client:
+            raise Exception("Trying to fetch file, but no flywheel account authenticated! Set FLYWHEEL env or ~/.config/flywheel/user.json")
 
     def maybe_download(self, input_path):
         """
@@ -93,6 +101,10 @@ class MockContext():
         """
         if os.path.isfile(input_path):
             return input_path
+
+        # only continue if we have client
+        self.test_client()
+
         file = self.client.get(input_path)
         # TODO confirm test id is a file ending with zip
         if file:
@@ -116,6 +128,10 @@ class MockContext():
             raise Exception("trying to upload without destination id")
         if not os.path.isfile(stats_file):
             raise Exception("Failed to create {STATS_OUTPUT_FILE}")
+
+        # only continue if we have client
+        self.test_client()
+
         # TODO: find flywheel upload command
         acq_or_analysis = self.client.get(self.destination['id'])
         ses = acq.parent
@@ -128,7 +144,21 @@ def main():
     """
     Run CH's Phantom QC Matlab code via octave.
     Optionally update the session info to include tsnr
+
+    USAGE: run.py [/path/to/dcm.zip]
+     Runs Program/dostat.m to create phantom, background, readout&phaseenc alias masks for peak and  SNR and tSNR stats.
+     Results written to stats.json
+     
+        If args, first must be path to a zip file containing DICOMs
+   
+        No args, then uses Flywheel's GearContext to pull in phantom_dicom.location.path
+        stats.json is uploaded to session. and session mongodb gets 'snr' 'tsnr' 'shim' 'alias' 'bkoff'
+
+        OUTDIR, WORKDIR, ML_PROGRAM and/or OCTAVE_PROGRAM environment variables will be checked before using Docker defaults.
+        These are useful to set for testing outside the container
     """
+    if "-h" in sys.argv[1:]:
+        print(help(main))
     if len(sys.argv) > 1:
         input_path = sys.argv[1]
         context = MockContext(input_path)
@@ -137,21 +167,50 @@ def main():
         context = flywheel.GearContext()
         input_path = context.get_input("phantom_dicom")["location"]["path"]
 
-    # print(f"env: nii {os.environ.get('phantom_nifti')}") # None
-    # print(f"config: {context.config.get('phantom_nifti')}") # None
+    # matlab's a lot faster than octave
+    # use it (dostat) when it exists (mlbin/00_build_mcr.m)
+    # dostat has extra argument
+    ml_program =  os.environ.get("ML_PROGRAM", "/usr/bin/mlrtapp/dostat")
+    octave_program = os.environ.get("OCTAVE_PROGRAM","/flywheel/v0/QC.m")
+    work_dir = os.environ.get("WORKDIR", "/flywheel/v0/work/dicoms/")
+    if os.path.isfile(ml_program):
+        qc_program = ml_program 
+        input_args = [work_dir, "0", context.output_dir]
 
-    print(f"input path: '{input_path}'")
+        # check LD_PATH has matlab
+        # work around singulairty stripping enviornments?
+        # libmwlaunchermain.so: cannot open shared object file
+        # hard coded path mathces container's
+        current_ldpath = os.environ.get("LD_LIBRARY_PATH","")
+        if not "glnxa64" in current_ldpath:
+            warnings.warn(f"LD_LIBRARY_PATH doesn't have matlab!? '{current_ldpath}'. Adding")
+            os.environ["LD_LIBRARY_PATH"]= (current_ldpath + ":" if current_ldpath else "" ) + \
+                    "/opt/matlabruntime/R2024a/runtime/glnxa64:/opt/matlabruntime/R2024a/bin/glnxa64:/opt/matlabruntime/R2024a/sys/os/glnxa64:/opt/matlabruntime/R2024a/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024a/extern/bin/glnxa64"
+    else:
+        qc_program = octave_program
+        input_args = [work_dir,   context.output_dir]
 
-    os.makedirs("/flywheel/v0/work/", exist_ok=True)
-    subprocess.run(["unzip", "-j", "-d", "/flywheel/v0/work/dicoms/", input_path], check=True)
-    subprocess.run(["/flywheel/v0/QC.m", "/flywheel/v0/work/dicoms/", context.output_dir])
-    # 20250312: no outputs?!
+
+    # 20260221WF - added "-n" to skip existing ("never overwrite")
+    #  in container, expect to always have new files.
+    #  outside container, dont need to keep being prompted
+    unzip_cmd = ["unzip", "-n", "-j", "-d", work_dir, input_path]
+
+    print(f"input path: {input_path}")
+    print(f"unzip:      {' '.join(unzip_cmd)}")
+    print(f"qc program: {qc_program} {' '.join(input_args)}")
+
+    os.makedirs(os.path.dirname(work_dir), exist_ok=True)
+    subprocess.run(unzip_cmd, check=True) # check raises excpetion if failed
+    subprocess.run([qc_program, *input_args])
+
+    # 20250312: no outputs?! List all for debugging
     subprocess.run(["ls", "-R", context.output_dir])
 
     if context.config.get('write_db'):
         update_db(context)
     if len(sys.argv) > 1 and context.destination is not None:
-        print("TODO: upload stats.json")
+        warnings.warn("TODO: no stats.json/db update yet when run outside gear.")
 
 
 if __name__ == "__main__":

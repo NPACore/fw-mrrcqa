@@ -1,5 +1,6 @@
 # makefile flag files
-.docker
+.make
+.docker*
 .gear
 .gear-run.txt
 .*m
@@ -27,3 +28,5 @@ helpers/*png
 helpers/*csv
 helpers/*pdf
 helpers/WeekStats-FWHM.txt
+mlbin/*/
+*.tar.bz2

@@ -1,26 +1,26 @@
 .PHONY: all test example
 DOCKER_NAME := $(shell jq -r '.custom."gear-builder".image' manifest.json)
+
+# MCC only used by old rule for manually compiled 'mlbin/qastats'
 MCC ?= /opt/ni_tools/MATLAB/R2021a/bin/mcc
-
-mlbin/qastats: Program/dostat.m 
-	mkdir -p $(dir $@)
-	cd $(dir $@) && $(MCC) -m ../$? -o $(notdir $@)
-
-mlbin/installer_input.txt: mlbin/qastats
-	cd $(dir $@) && matlab -r "try, run('buildcontainer'); catch e,e,end; quit"
 
 all: .gear-run.txt
 .docker-octave: Dockerfile $(wildcard Program/*)
-	docker build -t $(DOCKER_NAME)-octave ./
+	docker build -t $(DOCKER_NAME)-octave -f Dockerfile ./
 	date > $@
 
-.docker-ml: Dockerfile mlbin/qastats
-	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab ./
-	date > $@
+.docker-mlbase: Program/dostat.m  mlbin/build_mrc_container.m
+	matlab -r "try, run('mlbin/build_mrc_container.m'), catch e, e, end; quit"
+	docker image ls --format=json fwmrrcqa-mlbase > $@
 
-.gear: manifest.json .docker-ml
+## Flywheel
+.docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase matlab-test
+	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab-python ./
+	docker image ls --format=json $(DOCKER_NAME) > $@
+
+.gear: manifest.json .docker-mlpy
 	# source /home/foranw/src/fw-beta-cli/.venv/bin/activate
-	fw-beta gear build .
+	fw-beta gear build . -- -f Dockerfile.matlab-python
 	date > $@
 
 config.json: .gear input/phantom_dicom/trunc.zip
@@ -34,6 +34,7 @@ config.json: .gear input/phantom_dicom/trunc.zip
 install: .gear-run.txt
 	fw-beta gear upload
 
+## DATA
 input/QA_PRISMA3QA_20240809_180204_160000/: | input/
 	curl -L "https://github.com/NPACore/fw-mrrcqa/releases/download/1.0.20240822_pre-alpa/QA_PRISMA3QA_20240809_180204_160000.zip" > input/QA_PRISMA3QA_20240809_180204_160000.zip
 	cd input && unzip QA_PRISMA3QA_20240809_180204_160000.zip
@@ -56,7 +57,24 @@ input/phantom_dicom/trunc.zip: input/trunc/
 test: Program/readshimvalues.m Program/find_all_dicoms.m input/trunc/
 	cd Program/ && octave --eval "test readshimvalues; test find_all_dicoms;" #|& tee ../$@
 
-test-docker: .docker
+# confirm matlab code works as expected. useful before rebuilding docker container
+matlab-test: .make/mltest/stats.json
+.make/mltest/stats.json: Program/dostat.m input/QA_PRISMA3QA_20240809_180204_160000/ | output/mltest/
+	matlab -nodisplay -r 'try, cd Program; dostat ../input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/ 0 ../.make/mltest; catch e, disp(e); end; quit'
+	# try/cach so matlab doesn't exist with error if failed?
+	test -r $@
+
+# faster (but larger) matlab based
+test-docker-mlpy:  .make/docker-mlpy-test.log
+.make/docker-mlpy-test.log: .docker-mlpy | .make/ input/trunc/
+	docker run --entrypoint=/flywheel/v0/run.py -v $(PWD)/input:/flywheel/input:ro -v $(PWD)/$(dir $@):/flywheel/v0/work/  --rm $(DOCKER_NAME) /flywheel/input/QA_PRISMA3QA_20240809_180204_160000.zip | tee $@
+# also see
+# docker run -it --entrypoint=bash -v /home/foranw/src/fw-mrrcqa/input:/flywheel/input:ro -v /home/foranw/src/fw-mrrcqa/.make/:/flywheel/v0/work/  --rm npac/mrrcqa-ml:1.5.1.20260105
+# OUTDIR=/tmp/tsnr WORKDIR=/tmp/tsnr/work ML_PROGRAM=mlbin/fwmrrcqa-mlbasedocker/applicationFilesForMATLABCompiler/run_dostat.sh  ./Program/run.py input/QA_PRISMA3QA_20240809_180204_160000.zip
+
+
+# old original docker
+test-docker-octave: .docker-octave
 	docker run -v $(PWD)/input:/flywheel/input:ro --rm --entrypoint "octave" $(DOCKER_NAME) --eval "cd /flywheel/v0/; test readshimvalues"
 
 local_bin/:
@@ -82,3 +100,16 @@ docs/snr_plot:
 
 Program/mask_structuring_elements.mat: Program/mask_structuring_elements.m
 	cd $(dir $@) && matlab -nodisplay -r 'try, run mask_structuring_elements; end; quit'
+
+## not needed with newer matlab.
+# see mlbin/00_build_mcr.m
+mlbin/qastats: Program/dostat.m 
+	mkdir -p $(dir $@)
+	cd $(dir $@) && $(MCC) -m ../$? -o $(notdir $@)
+
+mlbin/installer_input.txt: mlbin/qastats
+	cd $(dir $@) && matlab -r "try, run('buildcontainer'); catch e,e,end; quit"
+
+.docker-ml.large-hand-built: Dockerfile.matlab mlbin/qastats
+	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab ./
+	date > $@

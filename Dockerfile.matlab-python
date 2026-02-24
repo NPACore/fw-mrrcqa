@@ -1,0 +1,38 @@
+# use image created by mlbin/00_build_mcr.m
+FROM fwmrrcqa-mlbase:latest
+
+# need flywheel-sdk for Program/run.py
+# matlab 'appuser' is id 1000 w/ no sudo. become root
+USER 0:0
+RUN apt update -y \
+  && apt-get -y install\
+     unzip \
+     python3 python3-pip \
+  && pip install flywheel-sdk \
+  && apt-get autoremove -y \
+  && apt-get clean -y \
+  && apt-get autoclean -y \
+  && rm -rf /var/lib/apt/lists/ \
+  && setcap -r /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper 
+
+# 20260222 - setcap above b/c docker save/docker load over NFS mount errors
+#  lsetxattr security.capability: operation not supported
+# ugly hack
+# this is the only file with capcity set!
+#   find / -not -ipath '/proc/*' -not -ipath '/dev/*' -type f -exec getcap -r {} \+
+#   /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper cap_net_bind_service,cap_net_admin=ep
+# but it's set with matlab container. see flatten-docker.sh
+
+ENV FLYWHEEL=/flywheel/v0
+RUN mkdir -p ${FLYWHEEL} && chmod a+rwx ${FLYWHEEL}
+
+
+
+# set back to user. but doesn't matter?
+# 20260221 - disable. problem with work directory permissions
+#USER 1000:1000
+COPY Program/run.py ${FLYWHEEL}/run.py
+# NB. flywheel will always manually set entrypoing to run.py
+#     could use 'dostat' as entry for non-flywheel usage
+#     dostats takes 
+ENTRYPOINT ["/usr/bin/mlrtapp/dostat"]

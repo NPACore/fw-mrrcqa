@@ -2,7 +2,7 @@
   "name": "mrrcqa",
   "label": "MRRC QA",
   "description": "Run MRRC Quality Assurance on morning phantoms",
-  "version": "1.4.20250409.01",
+  "version": "1.5.2.20260222",
   "author": "Chan Moon",
   "maintainer": "Will Foran <foranw@upmc.edu>",
   "license": "GPL-3.0",
@@ -13,12 +13,15 @@
     "SHLVL": "1",
     "container": "podman",
     "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-    "PWD": "/"
+    "PWD": "/",
+    "LD_LIBRARY_PATH": "/opt/matlabruntime/R2024a/runtime/glnxa64:/opt/matlabruntime/R2024a/bin/glnxa64:/opt/matlabruntime/R2024a/sys/os/glnxa64:/opt/matlabruntime/R2024a/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024a/extern/bin/glnxa64",
+    "DEBIAN_FRONTEND": "noninteractive",
+    "TZ": "Etc/UTC"
   },
   "custom": {
     "gear-builder": {
       "category": "qa",
-      "image": "npac/mrrcqa:1.4.20250409.01"
+      "image": "npac/mrrcqa-ml:1.5.2.20260222"
     },
     "flywheel": {
       "suite": "utility"

@@ -1,3 +1,8 @@
+#
+#NB. use Dockerfile.matlab-python instead! Much smaller image from mlbin/00_build_mcr.m
+#    This file left for posterity
+#
+
 # want to keep the same base layer to avoid redownload octave every bookwarm-slim update
 # docker inspect --format='{{index .RepoDigests 0}} {{.Created}}' debian:bookworm-slim
 #  debian@sha256:12c396bd585df7ec21d5679bb6a83d4878bc4415ce926c9e5ea6426d23c60bdc 2025-02-24T00:00:00Z

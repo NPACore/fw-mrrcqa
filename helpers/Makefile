@@ -8,6 +8,9 @@ tempurature_log.xlsx: .ALWAYS
 PhantomQC.csv: tempurature_log.xlsx
 	NOUPLOAD=1 ./00_update_wiki_snr.bash
 
+#qc-wiki-version.csv: .ALWAYS
+#	curl -k https://wiki.mrrc.pitt.edu/lib/exe/fetch.php?media=phantomqc.csv > qc-wiki-version.csv
+
 # 20260127, run on recontwix@recontwix
 #           also see ../FID/fw_run.py; ./00_update_wiki_snr.bash (zeus cron)
 DailyQA.png: # PhantomQC.csv # csv not needed, pull from wiki via system('curl') in matlab

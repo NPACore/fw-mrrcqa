@@ -6,6 +6,13 @@ function [stat] = dostat(pfolder,bfig, outdir)
 %
 clear all;
 %}
+if nargin == 0
+   disp('USAGE: dostats /path/to/dicomdir 0 /path/to/savedir')
+   disp('  "0" can be "1" to save a figure and mask information')
+   disp('  also see run.py (/flywheel/v0/run.py in container)')
+   error('bad arguments')
+end
+
 calc_start_time = tic;
 % load depends if running octave
 % see 'pkg install dicom -forge' or e.g. 'yay -S octave-dicom' (needs GDCM lib)
@@ -302,27 +309,6 @@ for i=1:nfile
     cnt = cnt + 1;
 end
 
-%% Saving
-% 20250821 - env variable guard
-if ~isempty(getenv('QA_SAVE_IMAGES'))
-    maskphan = mask;
-    maskbg = 1 - mask;
-    mask_noiseroi = noiseroi;
-    mask_ro_noiseroi = ro_noiseroi;
-    mask_pe_noiseroi = pe_noiseroi;
-    matfname = fullfile(outdir, 'sigstat.mat');
-    fprintf('# saving %s\n', matfname)
-    save(matfname, 'DATA','t',...
-        'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
-        'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal', ...
-         'roi_area', 'MASK','ALL_MASK', ...
-         'DX','DY', ... DX all 0, DY all -1
-         'ishift', 'hzrng' ... hzrng not used!
-        );
-else
-    fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
-end
-
 %% Statistics
 %
 % signal size is (2, 46, 200) - mean&sd measure per slice per timepoint
@@ -384,5 +370,46 @@ stat.dicominfo = s;
 stat.date = stat.dicominfo.StudyDate;
 
 stat.calc_dur = toc(calc_start_time);
+
+%% Saving
+% 20251211 - moved from QC.m to here
+if nargin > 2
+   json_outfile = fullfile(outdir, 'stats.json');
+   if ~exist(outdir,'dir'), mkdir(outdir); end
+   json_str = jsonencode(stat);
+   fprintf('# saving %d chars of json to %s\n', length(json_str), json_outfile);
+   fid = fopen(json_outfile,'w');
+   fprintf(fid, '%s', json_str);
+   fclose(fid);
+end
+
+% 20250821 - env variable guard;
+% 20251211 - move to bottom to capture more
+if ~isempty(getenv('QA_SAVE_IMAGES'))
+    maskphan = mask;
+    maskbg = 1 - mask;
+    mask_noiseroi = noiseroi;
+    mask_ro_noiseroi = ro_noiseroi;
+    mask_pe_noiseroi = pe_noiseroi;
+    matfname = fullfile(outdir, 'sigstat.mat');
+
+
+    fprintf('# saving %s\n', matfname)
+    save(matfname, 'DATA','t',...
+        'maskphan','maskbg','maskalias','mask_noiseroi','mask_ro_noiseroi','mask_pe_noiseroi',...
+        'phansignal','totnoisesignal','aliasnoisesignal','noisesignal','ro_noisesignal','pe_noisesignal', ...
+         'roi_area', 'MASK','ALL_MASK', 'idx', ...
+         'DX','DY', ... DX all 0, DY all -1
+         'ishift', 'hzrng', ... hzrng not used!
+         'stat', ... final output
+         ... signals and mean/std calcs
+         'snr', 'phansignal', ...
+         'alias',  'aliasnoisesignal',...
+         'background','totnoisesignal', ...
+         'noise', 'noisesignal' ...
+        );
+else
+    fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
+end
 
 return;
