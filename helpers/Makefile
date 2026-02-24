@@ -17,7 +17,7 @@ DailyQA.png: # PhantomQC.csv # csv not needed, pull from wiki via system('curl')
 # in cron like
 # 0 12 * * 3 make -C /home/recontwix/src/fw-mrrcqa/helpers -Bs DailyQA.png WeekStats-FWHM.txt
 WeekStats-FWHM.txt:
-	echo "# generated $(shell whoami) @ $(shell hostname) on $(shell date) [by cron? $(RUN_BY_CRON)]" > $@
+	echo "# $(PWD)/p2_coil_updates.R by $(shell whoami)@$(shell hostname) on $(shell date) [cron? '$(RUN_BY_CRON)']" > $@
 	MEASURES=fwhm SCANNERS=Prisma1,Prisma2,Prisma3 ./p2_coil_updates.R >> $@
 	mountpoint -q /mnt/conference && mkdir -p /mnt/conference/$(shell date +%Y%m%d)/
 	cp $@ DailyQA.png /mnt/conference/$(shell date +%Y%m%d)/
