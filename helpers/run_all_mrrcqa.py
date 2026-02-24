@@ -31,13 +31,21 @@ i = 0
 for f in reversed(files):
     i += 1
 
-    acq = fw.get(f.parents['acquisition'])
-    ses = fw.get(f.parents['session'])
+    acq = fw.get(f.parents.get('acquisition'))
+    ses = fw.get(f.parents.get('session'))
+    if not acq:
+        print(f"SKIP: {f.acquisition.label} has no parent acq?!")
+        continue
+    if not ses:
+        print(f"SKIP: {f.acquisition.label} has no parent session?!")
+        continue
 
     # fw.get(f.parents['acquisition']).label #'ep2d_bold_p2_s2_5min'
     #f.info.get('SeriesDescription')         #'ep2d_bold_p2_s2_5min'
     if re.search('rfnoise', acq.label):
-        print(f"SKIP: {f.acquisition.label} is rfnoise")
+        print(f"SKIP: {acq.label} is rfnoise {f.label}")
+        continue
+
 
     ## TODO: quit if acq date is > 5 from today when told to care about that (environ, argv?)
 
@@ -45,11 +53,14 @@ for f in reversed(files):
     # can skip if a sufficnetly new gear has been run
     try:
         stats_idx = [x.name for x in acq.files].index('stats.json')
+        # version scheme changed: now 1.5.2.20260222, was 1.4.20250409.01
+        # verpatch had date in 1.4 and earlier. anything > 1.4 is good
         version = acq.files[stats_idx].gear_info.version
-        if version.split('.')[2] >= '20250408':
+        vermaj, vermin, verpatch, verdate = version.split('.')
+        if verpatch >= '20250408' or verdate >= '20260222':
             print(f"# SKIP! {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' has version {version}")
             continue
-        print(f"# version too old: {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' {version}")
+        print(f"# version too old: {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' {version} < 20250408")
     except ValueError:
         # didn't run yet?
         if ses.info.get('shim'):
