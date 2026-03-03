@@ -25,6 +25,9 @@ docker run --rm \
     input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/ 0 /out/
 ```
 
+### Interactive with flywheel
+See `run-fwid.py` with flywheel session id from web UI. Will run maltab code in temporary directory.
+
 ### Dockerfile
 `Dockerfile.matlab-python` uses the container created by maltab (R2024+) in `mlbin/build_mrc_container.m` to add flywheel specific `run.py` and it's dependencies. But `entrypoint` remains the matlab `dostat` program.
 

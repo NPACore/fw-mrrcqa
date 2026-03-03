@@ -245,7 +245,7 @@ for i=1:nfile
                     figure(2); subplot(2,2,3); imagesc(maskalias); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
                     figure(2); subplot(2,2,4); imagesc(noiseroi+2*ro_noiseroi+4*pe_noiseroi); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
 
-                    if icnt==1, set(gcf, 'Windowstyle', 'docked'); saveas(gcf,['mask_rois.png'],'png'); end
+                    if icnt==1, set(gcf, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
                 end
             end
 
@@ -404,6 +404,7 @@ if ~isempty(getenv('QA_SAVE_IMAGES'))
          'stat', ... final output
          ... signals and mean/std calcs
          'snr', 'phansignal', ...
+         'tsnr', 'tsnrx','tsnrn', ...
          'alias',  'aliasnoisesignal',...
          'background','totnoisesignal', ...
          'noise', 'noisesignal' ...
@@ -412,4 +413,56 @@ else
     fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
 end
 
+%% 2026-03-03 high SNR in later slices?
+%{
+  zs = [12 33 46];
+  for i=1:numel(zs);
+    z=zs(i); subplot(1,4,i);
+    m=squeeze(mean(DATA(:,:,z,:),4)); im=m.*MASK(:,:,z);
+    imshow(m/max(DATA(:)));
+    title(sprintf('z=%d mean=%.3f sd=%.3f', z, mean(im(im~=0)), std(im(im~=0))));
+  end
+  subplot(1,4,4);
+  plot(squeeze(phansignal(2,1:end,:)),'b','LineWidth',2)
+  % line  per time
+  hold on; plot(squeeze(phansignal(2,1:end,1)),'r','LineWidth',2);
+  % just second time point
+  plot(snr(47:46*2),'k');
+  % noise floor
+  plot(noisesignal(2,1:end,1),'y');
+  title('SNR by slice (46), per time (200)')
+  hold off
+%}
+%% tsnr
+%{
+  [ix,iy,iz ] = ind2sub(size(MASK), find(tsnr>600));
+  ux = unique(ix), uy = unique(iy), uz =unique(iz), % uz == 39:46
+
+  td = reshape(tsnr, size(MASK));
+  slice = td(:,:,44);
+  rep_ex = find(slice>50 & slice < 100,1)
+  too_hii = [find(td.*MASK > 300); rep_ex];
+
+  ts=nan(numel(too_hii), size(DATA,4));
+  [xx,yy,zz] = ind2sub(size(MASK), too_hii);
+  for i=1:numel(too_hii)
+     ts(i,:)=DATA(xx(i),yy(i),zz(i),:); 
+  end
+  [v,i] = sort(-1*td(too_hii)); v=-1*v;
+
+  figure
+  subplot(1,3,1); plot(tsnr); title('tsnr all voxels')
+  ax = subplot(1,3,2); imshow(td(:,:,44)/300); title('tsnr at z=44')
+  % zz(i(end)) == 44; v(end) == td(too_hii(i(end))) %  == 319.5
+  subplot(1,3,3);  hold on; title('ts of highest tsnr voxels');
+  plot(1:50,repmat(max(DATA,[],'all'),1,50),'r','LineWidth',2);
+  plot(ts(i([1:5 end]),:)', 'LineWidth',1);  
+  hold(ax,'on')
+  plot(ax, yy(i([1:5 end])), xx(i([1:5 end])),'r.')
+  hold off
+
+  %td(~isfinite(td)) = nan;
+  %[v,i] = nanmax(td(:)); [mx,my,mz] = ind2sub(size(MASK), i) % 48,19,45
+  % ts=nan(numel(ix), size(DATA,4)); for i=1:numel(ix), ts(i,:)=DATA(ix(i),iy(i),iz(i),:); end
+%}
 return;
