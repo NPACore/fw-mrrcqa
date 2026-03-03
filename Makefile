@@ -14,7 +14,7 @@ all: .gear-run.txt
 	docker image ls --format=json fwmrrcqa-mlbase > $@
 
 ## Flywheel
-.docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase matlab-test
+.docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase matlab-test manifest.json
 	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab-python ./
 	docker image ls --format=json $(DOCKER_NAME) > $@
 
