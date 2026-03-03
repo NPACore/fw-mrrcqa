@@ -371,6 +371,11 @@ stat.date = stat.dicominfo.StudyDate;
 
 stat.calc_dur = toc(calc_start_time);
 
+% 2026-03-03 - max value clipping?
+stat.percent_voxels_max = 100*nnz(DATA == max(DATA(:)))/numel(DATA);
+masked = DATA.*MASK;
+stat.mean_mask_vol = mean(masked(masked>0));
+
 %% Saving
 % 20251211 - moved from QC.m to here
 if nargin > 2

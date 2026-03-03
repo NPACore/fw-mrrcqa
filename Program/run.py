@@ -61,7 +61,10 @@ def update_db(context: flywheel.GearContext):
             'tsnr': stats.get('tsnrpk'),
             'shim': stats.get('shim'),
             'alias': stats.get('aliaspk'),
-            'bkoff':stats.get('bkoffpk')}
+            'bkoff':stats.get('bkoffpk'),
+            # 2026-03-03. high tSNR b/c of clipping.
+            'percent_voxels_max': stats.get('percent_voxels_max'),
+            'mean_mask_vol': stats.get('mean_mask_vol')}
     sess.update_info(info)
     print(f"updated sess db: {info}")
 
