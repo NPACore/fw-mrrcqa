@@ -358,8 +358,9 @@ stat = struct;
 stat.shim = shimvalues;
 stat.GradSensitivity = GradSensitivity;
 %  uT/m values for X,Y,Z shims
-% NB. X2,Y2,Z2,S2,C2 (uT/m^2) are shimvalues(4:8)
 stat.XYZ_uTm = calc_gradients(shimvalues, GradSensitivity);
+%  X2,Y2,Z2,S2,C2 (uT/m^2)
+stat.XYZ2SC_uTm2 = shimvalues(4:8);
 
 % TODO: don't save these: 2*120 histbin value+idx that aren't that useful out of context?
 stat.snr = [snrn; snrx];
