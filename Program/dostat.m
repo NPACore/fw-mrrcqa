@@ -164,9 +164,9 @@ for i=1:nfile
     % read DICOM header including CSA information
     info = dicominfo(P);
     [s, err] = dicm_hdr(P);
-    if bfig==1, disp([name ' - ' num2str(s.AcquisitionNumber) '/' num2str(s.InstanceNumber) ]); end
+    if bfig==1, disp([name ' - acq# ' num2str(s.AcquisitionNumber) ' inst#' num2str(s.InstanceNumber) ' / nfile ' num2str(nfile) ]); end
     % B0 shim value
-    [shimvalues,strbuff] = readshimvalues(P);
+    [shimvalues,strbuff, GradSensitivity] = readshimvalues(P);
     %disp([num2str(s.InstanceNumber) ': ' num2str(shimvalues)]);
     % image
     data = dicomread(info); % size(data) == [658 658]
@@ -245,7 +245,10 @@ for i=1:nfile
                     figure(2); subplot(2,2,3); imagesc(maskalias); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
                     figure(2); subplot(2,2,4); imagesc(noiseroi+2*ro_noiseroi+4*pe_noiseroi); axis image; colormap(jet); title(['slice = ' num2str(ll) '/' num2str(nz)]);
 
-                    if icnt==1, set(gcf, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
+		    % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y)
+		    try
+                       if icnt==1, set(gcf, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
+		    end
                 end
             end
 
@@ -353,7 +356,12 @@ stat = struct;
 [M,I] = max(tsnrn); stat.tsnrpk = tsnrx(I);
 
 stat.shim = shimvalues;
+stat.GradSensitivity = GradSensitivity;
+%  uT/m values for X,Y,Z shims
+% NB. X2,Y2,Z2,S2,C2 (uT/m^2) are shimvalues(4:8)
+stat.XYZ_uTm = calc_gradients(shimvalues, GradSensitivity);
 
+% TODO: don't save these: 2*120 histbin value+idx that aren't that useful out of context?
 stat.snr = [snrn; snrx];
 stat.alias = [aliasn; aliasx];
 stat.bkoff = [backgroundn; backgroundx];
@@ -369,12 +377,13 @@ stat.mask_thresh_sd = std(mask_thresh(:));
 stat.dicominfo = s;
 stat.date = stat.dicominfo.StudyDate;
 
-stat.calc_dur = toc(calc_start_time);
-
 % 2026-03-03 - max value clipping?
 stat.percent_voxels_max = 100*nnz(DATA == max(DATA(:)))/numel(DATA);
 masked = DATA.*MASK;
 stat.mean_mask_vol = mean(masked(masked>0));
+stat.skew =skewness(masked(masked>0));
+
+stat.calc_dur = toc(calc_start_time);
 
 %% Saving
 % 20251211 - moved from QC.m to here

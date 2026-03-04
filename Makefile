@@ -54,8 +54,8 @@ input/phantom_dicom/trunc.zip: input/trunc/
 	mkdir -p $(dir $@)
 	cd input/trunc/ && zip $(PWD)/$@ -r ./
 
-test: Program/readshimvalues.m Program/find_all_dicoms.m input/trunc/
-	cd Program/ && octave --eval "test readshimvalues; test find_all_dicoms;" #|& tee ../$@
+test: Program/readshimvalues.m Program/find_all_dicoms.m Program/calc_gradients.m input/trunc/
+	cd Program/ && octave --eval "format longG; test readshimvalues; test find_all_dicoms; test calc_gradients" #|& tee ../$@
 
 # confirm matlab code works as expected. useful before rebuilding docker container
 matlab-test: .make/mltest/stats.json
