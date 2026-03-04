@@ -1,12 +1,13 @@
-function [shimvalues,shimmode, strbuff] = readshimvalues(fname)
-% function [shimvalues,strbuff] = readshimvalues(fname)
+function [shimvalues,shimmode, strbuff, GradSensitivity] = readshimvalues(fname)
+% function [shimvalues,shimmode,strbuff,GradSensitivity] = readshimvalues(fname)
 %
 
 %disp(fname);
 
 % memory
 shimmode = [];
-shimvalues = [];
+shimvalues = []; % X,Y,Z[DAC], 2nd ... [uT/m^2 ??], offsetfreq
+GradSensitivity = []; % uT/m(?)/DAV
 
 % read in dicom file -- line by line until we run out of character lines
 fid = fopen(fname);
@@ -112,27 +113,68 @@ else
     lFrequency = 0;
 end
 
-%
+% Gradient sensitivity
+idxs = strfind(strbuff,'sGRADSPEC.asGPAData[0].flSensitivityX');
+if ~isempty(idxs)
+    strtmp = strbuff(idxs:end);
+    idxe = strfind(strtmp, newline);
+    %strlOffsetX = strtmp(1:idxe-1);
+    strflSensitivityX = strtmp(1:idxe(1)-1);
+    idx = strfind(strflSensitivityX,'=');
+    flSensitivityX = str2num(strtrim(strflSensitivityX(idx+1:end)));
+else
+    flSensitivityX = 0;
+end
+idxs = strfind(strbuff,'sGRADSPEC.asGPAData[0].flSensitivityY');
+if ~isempty(idxs)
+    strtmp = strbuff(idxs:end);
+    idxe = strfind(strtmp, newline);
+    %strlOffsetX = strtmp(1:idxe-1);
+    strflSensitivityY = strtmp(1:idxe(1)-1);
+    idx = strfind(strflSensitivityY,'=');
+    flSensitivityY = str2num(strtrim(strflSensitivityY(idx+1:end)));
+else
+    flSensitivityY = 0;
+end
+idxs = strfind(strbuff,'sGRADSPEC.asGPAData[0].flSensitivityZ');
+if ~isempty(idxs)
+    strtmp = strbuff(idxs:end);
+    idxe = strfind(strtmp, newline);
+    %strlOffsetX = strtmp(1:idxe-1);
+    strflSensitivityZ = strtmp(1:idxe(1)-1);
+    idx = strfind(strflSensitivityZ,'=');
+    flSensitivityZ = str2num(strtrim(strflSensitivityZ(idx+1:end)));
+else
+    flSensitivityZ = 0;
+end
+
+
+
+
+%%
 shimvalues = [lOffsetX lOffsetY lOffsetZ];
 for i=1:5
     shimvalues = [shimvalues alShimCurrent(i)];
 end
 shimvalues = [shimvalues lFrequency];
-
 shimmode = ucMode;
+
+GradSensitivity = [flSensitivityX flSensitivityY flSensitivityZ];
 
 return;
 
 end
 
 %!test
-%! [shimvalues,shimmode, strbuff] = readshimvalues('../input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA') ;
+%! [shimvalues,shimmode, strbuff, gs] = readshimvalues('../input/QA_PRISMA3QA_20240809_180204_160000/EP2D_BOLD_P2_S2_5MIN_0003/PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA') ;
 %! [lOffsetX lOffsetY lOffsetZ sv1 sv2 sv3 sv4 sv5 lFrequency] = num2cell(shimvalues){:};
 %! assert(lOffsetX,  2865);
 %! assert(lFrequency, 123258356);
+%! assert(gs(1), 0.000159834540682);
 
 % values from:
 % input='PRISMA3QA.MR.QA_PRISMA3QA.0003.0001.2024.08.09.18.15.49.154822.1380215093.IMA'
 % dicom_hdr -sexinfo $input | grep -P 'lOffsetX|lFreq'
 %   sGRADSPEC.asGPAData[0].lOffsetX  =      2865
 %   sTXSPEC.asNucleusInfo[0].lFrequency      =      123258356
+%   sGRADSPEC.asGPAData[0].flSensitivityX    =      0.000159834540682
