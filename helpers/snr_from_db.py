@@ -49,12 +49,13 @@ class SNR:
         logging.info("Loaded")
         return qc_sess
 
-    def all_shim_and_snr(self) -> pd.DataFrame:
+    def all_shim_and_snr(self, qc_sess = None) -> pd.DataFrame:
         """
         updated (20250312) version of all_snr for plotting in R.
         includes shim values
         """
-        qc_sess = self.all_qc_sess()
+        if qc_sess is None:
+            qc_sess = self.all_qc_sess()
         snr = [
             {
                 **s.info, # snr tsnr alias bkoff shim
@@ -74,7 +75,13 @@ class SNR:
         shims.columns=['X', 'Y', 'Z',
                        'X2', 'Y2', 'Z2', 'XY', 'S2',
                        'B0']
-        snr_expand = snr_df.drop(columns=['shim']).join(shims)
+
+        # 20260304 - added XYZ_uTm (and XYZ2SC_uTm2, copy of shims[3:7])
+        #            XYZ adjusted by gradient sensitivity to get in standardized uT/m units
+        shimsXYZ = snr_df['XYZ_uTm'].apply(pd.Series)
+        shimsXYZ.columns=['XuTm', 'YuTm', 'ZuTm']
+
+        snr_expand = snr_df.drop(columns=['shim', 'XYZ_uTm', 'XYZ2SC_uTm2']).join(shims).join(shimsXYZ)
         return snr_expand
 
     def all_shim_and_snr_csv(self, fname) -> None:
@@ -157,6 +164,8 @@ def main(upload=False, png=None, csv=None):
             plt.savefig(png)
         else:
             plt.show()
+
+    return snr_df
 
 
 if __name__ == "__main__":
