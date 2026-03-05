@@ -166,7 +166,8 @@ for i=1:nfile
     [s, err] = dicm_hdr(P);
     if bfig==1, disp([name ' - acq# ' num2str(s.AcquisitionNumber) ' inst#' num2str(s.InstanceNumber) ' / nfile ' num2str(nfile) ]); end
     % B0 shim value
-    [shimvalues,strbuff, GradSensitivity] = readshimvalues(P);
+
+    [shimvalues,shimmode, strbuff, GradSensitivity] = readshimvalues(P);
     %disp([num2str(s.InstanceNumber) ': ' num2str(shimvalues)]);
     % image
     data = dicomread(info); % size(data) == [658 658]

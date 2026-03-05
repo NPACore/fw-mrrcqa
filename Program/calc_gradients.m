@@ -5,7 +5,7 @@ function [shimXYZ_uT_m] = calc_gradients(shimvalues, GradSensitivity, verbose)
 shimXYZ_uT_m = shimvalues(1:3).*GradSensitivity(1:3);
 
 % default to showing all measures
-if nargin < 3, verbose=1, end
+if nargin < 3, verbose=1; end
 
 %% display
 if verbose
