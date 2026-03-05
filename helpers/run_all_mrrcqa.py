@@ -3,6 +3,8 @@
 
 20241227WF - used flywheel-tutorials' copy-job.py to build initial gear.run call
 """
+# MINVERSIONDATE = '20250408'
+MINVERSIONDATE = '20260304'
 
 import os
 import re
@@ -37,19 +39,26 @@ for f in reversed(files):
     # fw.get(f.parents['acquisition']).label #'ep2d_bold_p2_s2_5min'
     #f.info.get('SeriesDescription')         #'ep2d_bold_p2_s2_5min'
     if re.search('rfnoise', acq.label):
-        print(f"SKIP: {f.acquisition.label} is rfnoise")
+        print(f"SKIP: {acq.label} is rfnoise")
+        continue
 
     ## TODO: quit if acq date is > 5 from today when told to care about that (environ, argv?)
 
-    print(f"# {i}/{len(files)} running for {ses.subject.code} {ses.label} {f.name}")
+    print(f"# {i}/{len(files)} running for {ses.subject.code} {ses.label} {f.name} (acq={acq.id})")
     # can skip if a sufficnetly new gear has been run
     try:
         stats_idx = [x.name for x in acq.files].index('stats.json')
         version = acq.files[stats_idx].gear_info.version
-        if version.split('.')[2] >= '20250408':
+        # older 1.4.20250409.01 vs newer 1.5.4.20260304
+        if m := re.search(r'\d{8}', version):
+            date_part = m.group(0)
+        else:
+            print("WARNING: no date in version {version}")
+            date_part = 0
+        if date_part >= MINVERSIONDATE:
             print(f"# SKIP! {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' has version {version}")
             continue
-        print(f"# version too old: {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}' {version}")
+        print(f"# RERURN: version {version} too old ({date_part} < {MINVERSIONDATE}): {fw.get(ses.parents.project).label}/{ses.label} acq='{acq.label}'")
     except ValueError:
         # didn't run yet?
         if ses.info.get('shim'):
