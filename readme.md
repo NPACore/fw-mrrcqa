@@ -41,6 +41,29 @@ ls outputs/bars.png
 
 ![](output/bars.png)
 
+### speed
+
+```python
+import flywheel; fw=flywheel.client()
+b = fw.jobs.find('gear_info.name=~mrrcqa,transitions.complete>2026-02-20,state=complete')
+xx =  [(fw.get(x['parents']['project']).label, fw.get(x['parents']['session']).created.strftime("%F %H:%M"), x['created'].strftime("%F %H:%M"), x['gear_info']['version'], (x['transitions']['complete'] - x['transitions']['pending']).total_seconds()) for x in b];
+print(pd.DataFrame(xx, columns=['proj','sesdate','queued','version','totaldur']).sort_values(['sesdate','proj','queued']))
+```
+
+```
+     proj          sesdate           queued         version  totaldur
+Prisma1QA 2026-02-20 11:40 2026-02-20 11:42 1.4.20250409.01  6390.041
+Prisma2QA 2026-02-20 11:41 2026-02-20 11:42 1.4.20250409.01  6396.647
+Prisma2QA 2026-02-20 20:45 2026-02-20 20:46 1.4.20250409.01  6990.388
+Prisma1QA 2026-02-21 11:30 2026-02-21 11:32 1.4.20250409.01  6483.734
+
+Prisma1QA 2026-02-23 11:34 2026-02-23 11:36  1.5.2.20260222   166.410
+Prisma2QA 2026-02-23 11:35 2026-02-23 11:37  1.5.2.20260222   125.270
+Prisma1QA 2026-02-24 11:44 2026-02-24 11:46  1.5.2.20260222   113.757
+Prisma2QA 2026-02-24 12:05 2026-02-24 12:07  1.5.2.20260222   139.759
+```
+
+
 
 ### TODO
 
