@@ -112,12 +112,12 @@ def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
 
         # 20260316: fa_qa values goes into fwhm. new measure for svs too
         db_field='fwhm'
-        if re.find('SVS',acq.label):
+        if re.search('svs',acq.label):
             db_field = 'fwhm_svs'
 
         # Check if FWHM already exists
         if ses.info.get(db_field):
-            logging.info("skipping %s, already have fwhm: %s", ses.label, ses.info.get('fwhm'))
+            logging.info("skipping %s (%s), already have fwhm: %s", acq.label, ses.label, ses.info.get(db_field))
             return False
 
         # Update session info with FWHM
