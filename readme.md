@@ -2,14 +2,15 @@
 
 Build `stats.json` w/ peak values in background, phase encoding, and alias noise masks. Also runs SNR and tSNR within the phantom-containing voxels.
 
-[`helpers/plots.R`](helpers/plots.R) uses the flywheel DB to create a csv and plot 
+[`helpers/plots.R`](helpers/plots.R) uses the flywheel DB to create a csv and plot. [`helpers/readme.md`](helpers/readme.md) has more.
 MRRC Prisma 1 to Prisma 3 outputs on https://wiki.mrrc.pitt.edu/doku.php?id=data:qc.
 
 Some care was taken to work on Flywheel but not depend on it.
 `manifest.json` details the flywheel configuration.
 
 Other QC includes:
-  * Total coil FWHM in [`FID/`](FID/) can be run as a flywheel file-curator gear (`FID/fwhm.py`) or as a stand alone script.
+  * Total coil FWHM in [`FID/`](FID/) can be run as a flywheel file-curator gear or as a stand alone script. [`FID/fwhm.py`](FID/fwhm.py) handles both.
+    * Works for `qa_fid` (default, adds `fwhm` to session info) and `svs_se_40_wat` via `ACQ_LABEL` (adds `fwhm_svs` to session info). Run by cron. See [`helpers/01_flywheel_hpc_mrrcqa.bash`](helpers/01_flywheel_hpc_mrrcqa.bash).
   * z-shim value alerting is handled by [`shim_notify.py`](https://github.com/NPACore/file-curator/blob/mrrc/examples/shim_notify.py) in the NPAC fork of [`file-curator`](https://github.com/NPACore/file-curator/)'s examples
 
 ## Matlab

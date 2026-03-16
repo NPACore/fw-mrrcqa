@@ -14,6 +14,9 @@
 across Prisma QA projects on flywheel
 
 20260109WF - adapted from ../helpers/run_all_mrrcqa.py
+20260316WF - ACQ_LABEL=svs_se to update fwhm_svs (instad of fid_qa's fwhm)
+
+  FID_MAX_FIN=1 ACQ_LABEL='svs_se_30' uv run ./fw_run.py
 """
 
 import os
@@ -52,8 +55,15 @@ def run_gear(inputs, tags=[]):
 
 
 
-# Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.snr
-files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~qa_fid,name=~dcm', limit=1e10)
+# Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.fwhm
+db_field = 'fwhm'
+# default to qa_fid. might also want 'svs_se_30' (20260316)
+LABEL = os.environ.get("ACQ_LABEL", "qa_fid")
+# if svs, look at new db fieldname
+if re.search('svs',LABEL):
+    db_field = 'fwhm_svs'
+
+files = fw.files.find(f'project.label=~Prisma,type=dicom,acquisition.label=~{LABEL},name=~dcm', limit=1e10)
 verb(f"# {datetime.now()} found {len(files)} acq.label ep2d_bold zip files")
 i = 0
 already_fin = 0
@@ -69,8 +79,8 @@ for f in reversed(files):
     project = fw.get(ses.parents.project).label
 
     verb(f"# {i}/{len(files)} running for {ses.subject.code} {project} {ses.label} {f.name}")
-    if val := ses.info.get('fwhm'):
-        verb(f"# Already have fwhm: {val}")
+    if val := ses.info.get(db_field):
+        verb(f"# Already have {db_field}: {val}")
 
         # dont do this forever if everythings finished
         already_fin = already_fin + 1
