@@ -34,7 +34,11 @@ def fft_signal(dcm) -> np.ndarray:
     csa_fft = dcm.get_item((0x7fe1,0x1010))
     # was bytes. uint8 len=16384. should be single w/len 4096
     raw = np.frombuffer(csa_fft.value, dtype='<f4')
-    assert raw.shape[0] == 4096
+
+    # assert raw.shape[0] == 4096
+    # should be 2^x. 4096 for qa_fid; 2048 for SVS
+    assert np.log2(raw.shape[0]) % 1 == 0
+
     cplx = raw[0::2] + 1j*raw[1::2]
 
     ## Siemens CSA (Common Syngo Architecture)
@@ -52,22 +56,22 @@ def fft_signal(dcm) -> np.ndarray:
     fsignal = np.fft.fftshift(np.fft.fft(cplx))
     return fsignal
 
-def fft_acqdir(dpath: str, patt="*.dcm") -> np.ndarray:
+def fft_acqdir(dpath: str, patt="*.dcm", inshape=[64,2048]) -> np.ndarray:
     """
     extract FID for all channels -- one channel per dicom file in acquisition directory
     :param dpath: path to acquisition directory with 64 dicoms
     :param patt: dicom file name patter. examples: 'MR.*', '*.dcm', etc
-    :return: fft_signal() on each dicom: np.complex128 (64, 2048)
+    :return: fft_signal() on each dicom: np.complex128 of 'inshape' [(64, 2048) for qa_fd_uc_upw]
     """
     if re.search('.zip$', dpath):
-        res = np.zeros([64,2048],dtype='complex64')
+        res = np.zeros(inshape,dtype='complex64')
         with ZipFile(dpath) as zf:
-            if not len(zf.filelist) == 64:
+            if not len(zf.filelist) == inshape[0]:  # 64 for qa_fid
                 raise Exception(f"{len(zf.filelist)} dcm files instead of expected 64")
             for i,entry in enumerate(zf.filelist):
                 with zf.open(entry.filename) as fh:
                     fft = fft_signal(pydicom.dcmread(fh))
-                    assert(fft.shape[0]) == 2048
+                    assert(fft.shape[0]) == inshape[1] # 2048 for qa_fid
                     res[i,:] = fft
     else:
         files = glob(f'{dpath}/{patt}')
@@ -75,7 +79,7 @@ def fft_acqdir(dpath: str, patt="*.dcm") -> np.ndarray:
         res = np.stack([fft_signal(pydicom.dcmread(f)) for f in files])
 
     # 64 channels worth of data
-    assert res.shape == (64, 2048)
+    assert res.shape == inshape # (64, 2048) for qa_fid
     return res
 
 def norm_subset(coil_2d):

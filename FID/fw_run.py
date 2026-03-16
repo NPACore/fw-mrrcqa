@@ -53,7 +53,8 @@ def run_gear(inputs, tags=[]):
 
 
 # Prisma1QC to Prisma3QC all have ep2d_bold dicom zips used to populate ses.info.snr
-files = fw.files.find('project.label=~Prisma,type=dicom,acquisition.label=~qa_fid,name=~dcm', limit=1e10)
+LABEL = os.environ.get("ACQ_LABEL", "qa_fid") # default to qa_fid. might also want 'svs_se_30' (20260316)
+files = fw.files.find(f'project.label=~Prisma,type=dicom,acquisition.label=~{LABEL},name=~dcm', limit=1e10)
 verb(f"# {datetime.now()} found {len(files)} acq.label ep2d_bold zip files")
 i = 0
 already_fin = 0
