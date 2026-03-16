@@ -3,7 +3,10 @@
 Check scanner B0.
 Use FWHM on FFT of free induction decay QA sequence
 
-Can also be used as a file-curator flywheel gear
+Can also be used as a file-curator flywheel gear.
+
+20260316 - default db name is 'fwhm'
+           But want to run for single voxel spec sequence too ('fwhm_svs')
 """
 
 import numpy as np
@@ -37,7 +40,7 @@ def fid_fwhm(dcm, plot=True):
     csa = coil.csareader.read(dcm[(0x0029, 0x1110)].value)
     dt = (coil.read_item(csa, 'RealDwellTime') or 0) * 1e-9  # sec; scanner ADC sampling time
     bw = 1/dt  # Hz
-    # t = rng*dt 
+    # t = rng*dt
     fftfid = coil.fft_signal(dcm)
     absfft = np.abs(fftfid)
 
@@ -49,8 +52,9 @@ def fid_fwhm(dcm, plot=True):
     half_max = np.max(absfft)/2
     above_hm = f[absfft-half_max > 0]
     fwhm = np.max(above_hm) - np.min(above_hm)
-    
+
     if plot:
+        dcm_file=f"{dcm.AcquisitionDate} {dcm.AcquisitionTime} {dcm.SeriesDescription}"
         import matplotlib.pyplot as plt
         plt.title(f"dt={dt:.6} bw={bw:.2} nt={nt} hm={half_max:3.2};\n{dcm_file}")
         plt.suptitle(f"fwhm={fwhm}")
@@ -101,22 +105,27 @@ def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
     if not flywheel or not client:
         logging.warning("Flywheel not available or no client, skipping DB update")
         return False
-        
+
     try:
         acq = client.get(acq_id)
         ses = client.get(acq.session)
-        
+
+        # 20260316: fa_qa values goes into fwhm. new measure for svs too
+        db_field='fwhm'
+        if re.find('SVS',acq.label):
+            db_field = 'fwhm_svs'
+
         # Check if FWHM already exists
-        if ses.info.get('fwhm'):
+        if ses.info.get(db_field):
             logging.info("skipping %s, already have fwhm: %s", ses.label, ses.info.get('fwhm'))
             return False
-        
+
         # Update session info with FWHM
-        new_info = {'fwhm': fwhm}
+        new_info = {db_field: fwhm}
         ses.update_info(new_info)
-        logging.info("Updated session %s with fwhm: %f", ses.label, fwhm)
+        logging.info("Updated session %s with %s: %f", ses.label, db_field, fwhm)
         return True
-        
+
     except Exception as e:
         logging.error("Failed to update DB for acquisition %s: %s", acq_id, e)
         return False
@@ -158,7 +167,7 @@ class Curator(FileCurator):
         dcm = first_dicom_from_zip(file_path)
         fwhm = fid_fwhm(dcm, plot=False)
         print(f"FID FWHM\t{fwhm:2.3f}\t{file_path}")
-        
+
         # Update flywheel database with FWHM value
         acq_id = file_["hierarchy"]["id"]
         update_fwhm_stat(acq_id, fwhm, self.client)
