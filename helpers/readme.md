@@ -6,23 +6,29 @@ The scripts interface with Flywheel, the dokuwiki website, and the conference ro
 
  1. QA scan
  2. PACS upload to flywheel
- 3. gear rule triggers via file-curator: fwhm.py;  shim_notify.py (session 'z'); qc_launch.py (fw-mrrcqa gear)
-    - ../FID/fwhm.py
-    - ../Program/run.py
+ 3. gear rule triggers via file-curator: `fwhm.py`;  `shim_notify.py` (session 'z'); `qc_launch.py` (fw-mrrcqa gear)
+    - `../FID/fwhm.py` (NOT setup as gear-rules! run by `01_flywheel_hpc_mrrcqa.bash` instead
+    - `../Program/run.py`
     - https://github.com/NPACore/file-curator.git
  4. cron pull of db into summary files: csv file, R plot, matlab plot
     - ./00_update_wiki_snr.bash
  5. upload to summary files to wiki
 
 ## Flywheel catch up
-`01_flywheel_hpc_mrrcqa.bash` catches any missed flywheel gear triggers for both the FID file-curator ([`../FID`](../FID)) and the fw-mrrcqa gear.
+`01_flywheel_hpc_mrrcqa.bash` catches any missed flywheel gear triggers for fw-mrrcqa gear (SNR and tSNR stats) using `./run_all_mrrcqa.py`.
+
+Also runs FID file-curator ([`../FID/fw_run.py`](../FID/fw_run.py)). This populates `fwhm` and `fwhm_svs` session database info entries.
+
+```
+0  8  *   *   *   helpers/01_flywheel_hpc_mrrcqa.bash
+```
 
 ## Stats
 ### phantomqc.csv and plot
 `00_update_wiki_snr.bash` is the main entry point that calls `plots.R`, used in foranw@zeus cron like:
 
 ```
-0  8 *   *   *   /raidzeus/src/fw-mrrcqa/helpers/00_update_wiki_snr.bash
+0  8 *   *   *   helpers/00_update_wiki_snr.bash
 ```
 
 `plots.R` uses
@@ -46,7 +52,7 @@ recontwix cron handles two additional jobs
 | --- | --- |
 | `00_get_temp.bash` | sync manually recoreded scanner room tempurature |
 | `00_update_wiki_snr.bash` | setup env for cron run on Zeus nightly |
-| `01_flywheel_hpc_mrrcqa.bash` | find QA scans without processing, run them  |
+| `01_flywheel_hpc_mrrcqa.bash` | find QA scans without processing, run them. **Also** runs `../FID/fwhm.py`  |
 | `Makefile` | recipes for building files. Namely `WeekStats-FWHM.txt` |
 | | |
 | `plots.R`                 | plot SNR, uses `reticulate` to import `snr_from_db.py` and `wiki_upload.py` |
