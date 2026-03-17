@@ -21,6 +21,8 @@ csv_url <- "https://wiki.mrrc.pitt.edu/lib/exe/fetch.php?media=phantomqc.csv"
 events <- read.table('events.tsv',header=T) |> mutate(eventdate=ymd(eventdate))
 # maybe we want just the specified events?
 if(use_lastweek == "1") events <- rbind(events, data.frame(eventdate= today() - days(7), scanner=paste0("Prisma",c(1:3)), event="last_week"))
+# only last_week and earlier
+if(use_lastweek == "only") events <- data.frame(eventdate= today() - days(7), scanner=paste0("Prisma",c(1:3)), event="last_week")
 
 
 # Pitt's subdomain cert is suspect, ignore HTTPS/SSL security  
@@ -54,6 +56,7 @@ d_p2 |> tidyr::pivot_wider(id_cols=c(event), names_from=c(scanner), values_from=
 
 if(FALSE) {
    library(ggplot2)
+   #png("/tmp/QA.png") #rsixel::sixel()
    d_long <- d_events |> select(DATE,event, scanner, all_of(measures)) |>
        tidyr::pivot_longer(all_of(measures), values_to="value", names_to="measure") |>
        group_by(DATE,event,scanner,measure) |> mutate(event_date=mean(DATE[!is.na(value)])) |> ungroup()
@@ -69,4 +72,5 @@ if(FALSE) {
        #geom_point(aes(size=n,fill=event),shape=21,color='black',data=d_long_stat) +
        theme_bw()
       #+ see::theme_modern()
+   #dev.off()
 }
