@@ -1,4 +1,8 @@
 #!/usr/bin/env Rscript
+#
+# ImportError: Unable to import required dependencies:
+# env vars: EXISTING_CSV NOUPLOAD
+#
 # guix shell python r r-reticulate r-pacman r-dplyr r-tidyr r-ggplot2 -- ./plots.R
 if(! 'pacman' %in% installed.packages()) install.packages('pacman')
 pacman::p_load(dplyr, tidyr, ggplot2, reticulate, ggrepel, cowplot, lubridate, readxl)
@@ -15,13 +19,22 @@ read_excel <- function(xls_fname='../v2/20250312/DailyQA.xlsx') {
 
 # using flywheel db
 read_flywheel <- function(){
+    # 20260305: numpy vs reticulate error
+    #  ImportError: Unable to import required dependencies:
+    # do we want to use python output directly?
+    #   uv run --script snr_from_db.py --csv /tmp/flywheel_qa_db.csv
+    csv <- Sys.getenv("EXISTING_CSV")
+    if(file.exists(csv)){
+       return(read.csv(csv) |> select(-matches("X.1")) |> rename(DATE=date))
+    }
+
     # had hoped to reuse python code within R
     # but numpy.int64/nan is hard to handle?
+    # using reticulate, but could just generate outside of R like
+    # system(paste0('uv run --script snr_from_db.py --csv ', fname))
     fname <- tempfile("fw_snr", fileext = c(".csv"))
     snr_py <- import("snr_from_db")
     snr_py$SNR()$all_shim_and_snr_csv(fname)
-    # alternatively:
-    #   uv run --script snr_from_db.py --csv /tmp/flywheel_qa_db.csv
 
     # to match excel, DATE only has day (no time). no index
     d <- read.csv(fname) |>
@@ -63,7 +76,8 @@ upload_img <- function(img_path){
 #' creates a temporary file that is removed
 #' @param d row per QA likely from read_flywheel() |> add_temp()
 #' @param wiki_name upload file name
-upload_csv <- function(d, wiki_name='PhantomQC.csv'){
+upload_csv <- function(d_stats_wide, wiki_name='PhantomQC.csv'){
+
     up <- import("wiki_upload")
     wiki_root <- Sys.getenv("WIKIROOT")
     # without this, python code would also default to WIKIROOT and error if empty
@@ -72,7 +86,6 @@ upload_csv <- function(d, wiki_name='PhantomQC.csv'){
     dw <- up$DokuWiki(wiki_root)
 
     tempcsv <- tempfile("PhantomQC", fileext = c(".csv"))
-    d_stats_wide <- d |> long_stats() |> stats_to_wide()
     write.csv(d_stats_wide, tempcsv, row.names=F)
     tryCatch(dw$upload_file(tempcsv, wiki_name=wiki_name, binary=FALSE),
              finally=\() unlink(tempcsv))
@@ -150,13 +163,15 @@ gen_plot <- function(d) {
 main <- function() {
    d_fw <- read_flywheel()
    d <- add_temp(d_fw)
+   d_stats_wide <- d |> long_stats() |> stats_to_wide()
+
    # dont upload if NOUPLOAD environment variable is set
    upload <- length(Sys.getenv("NOUPLOAD"))!=0
 
    # upload to wiki
-   if(upload) upload_csv(d, 'PhantomQC.csv')
+   if(upload) upload_csv(d_stats_wide, 'PhantomQC.csv')
    # save a local copy
-   write.csv(d,'PhantomQC.csv',row.names=F)
+   write.csv(d_stats_wide,'PhantomQC.csv',row.names=F)
 
    p <- gen_plot(d)
    # like above: save local copy and upload to wiki
