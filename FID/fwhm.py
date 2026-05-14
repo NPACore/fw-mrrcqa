@@ -30,6 +30,7 @@ try:
     from flywheel_gear_toolkit.utils.curator import FileCurator
 except ImportError:
     flywheel = None
+
     class FileCurator:
         def __init__(self, **kwargs):
             pass
@@ -38,35 +39,42 @@ except ImportError:
 def fid_fwhm(dcm, plot=True):
     """Full Width Half Max of Free Inducation decay"""
     csa = coil.csareader.read(dcm[(0x0029, 0x1110)].value)
-    dt = (coil.read_item(csa, 'RealDwellTime') or 0) * 1e-9  # sec; scanner ADC sampling time
-    bw = 1/dt  # Hz
+    dt = (
+        coil.read_item(csa, "RealDwellTime") or 0
+    ) * 1e-9  # sec; scanner ADC sampling time
+    bw = 1 / dt  # Hz
     # t = rng*dt
     fftfid = coil.fft_signal(dcm)
     absfft = np.abs(fftfid)
 
-    nt = absfft.shape[0] #coil.read_item(csa, 'DataPointRows') or 0
+    nt = absfft.shape[0]  # coil.read_item(csa, 'DataPointRows') or 0
     rng = np.arange(0, nt)
-    df = bw/nt
-    f = (rng - nt/2)*df  # frequency
+    df = bw / nt
+    f = (rng - nt / 2) * df  # frequency
 
-    half_max = np.max(absfft)/2
-    above_hm = f[absfft-half_max > 0]
+    half_max = np.max(absfft) / 2
+    above_hm = f[absfft - half_max > 0]
     fwhm = np.max(above_hm) - np.min(above_hm)
 
     if plot:
-        dcm_file=f"{dcm.AcquisitionDate} {dcm.AcquisitionTime} {dcm.SeriesDescription}"
+        dcm_file = (
+            f"{dcm.AcquisitionDate} {dcm.AcquisitionTime} {dcm.SeriesDescription}"
+        )
         import matplotlib.pyplot as plt
+
         plt.title(f"dt={dt:.6} bw={bw:.2} nt={nt} hm={half_max:3.2};\n{dcm_file}")
         plt.suptitle(f"fwhm={fwhm}")
         plt.plot(f, absfft)
-        plt.hlines(y=half_max, xmin=f[0], xmax=f[nt-1], color='r')
+        plt.hlines(y=half_max, xmin=f[0], xmax=f[nt - 1], color="r")
         plt.show()
 
     return fwhm
 
+
 def load_coil_module(coil_path):
     """Load coil module from additional input when running as gear"""
     import importlib.util
+
     global coil
     # Load coil.py from additional-input-one
     spec = importlib.util.spec_from_file_location("coil", coil_path)
@@ -74,8 +82,6 @@ def load_coil_module(coil_path):
     sys.modules["coil"] = coil
     spec.loader.exec_module(coil)
     logging.info(f"Loaded coil module from {coil_path}")
-
-
 
 
 def first_dicom_from_zip(zfname: str) -> pydicom.Dataset:
@@ -111,13 +117,18 @@ def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
         ses = client.get(acq.session)
 
         # 20260316: fa_qa values goes into fwhm. new measure for svs too
-        db_field='fwhm'
-        if re.search('svs',acq.label):
-            db_field = 'fwhm_svs'
+        db_field = "fwhm"
+        if re.search("svs", acq.label):
+            db_field = "fwhm_svs"
 
         # Check if FWHM already exists
         if ses.info.get(db_field):
-            logging.info("skipping %s (%s), already have fwhm: %s", acq.label, ses.label, ses.info.get(db_field))
+            logging.info(
+                "skipping %s (%s), already have fwhm: %s",
+                acq.label,
+                ses.label,
+                ses.info.get(db_field),
+            )
             return False
 
         # Update session info with FWHM
@@ -174,8 +185,10 @@ class Curator(FileCurator):
 
         return fwhm
 
+
 if __name__ == "__main__":
     import sys
+
     for dcm_file in sys.argv[1:]:
         dcm = pydicom.dcmread(dcm_file)
         fwhm = fid_fwhm(dcm)
