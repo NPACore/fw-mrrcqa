@@ -39,6 +39,7 @@ def fft_signal(dcm) -> np.ndarray:
 
     # assert raw.shape[0] == 4096
     # should be 2^x. 4096 for qa_fid; 2048 for SVS
+    # assert is power of 2
     assert np.log2(raw.shape[0]) % 1 == 0
 
     cplx = raw[0::2] + 1j * raw[1::2]
