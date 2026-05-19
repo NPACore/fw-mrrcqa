@@ -41,11 +41,17 @@ except ImportError:
             pass
 
 
-def fid_fwhm(dcm, plot=True, interp_fac=1):
+def fid_fwhm(dcm, plot=True, interp_fac=-1):
     """Full Width Half Max of Free Inducation decay
     @param dcm pydicom object
     @param plot show a plot
-    @param interp_fac factor to inc number of samples by (1 is disabled. want 10x for SVS)
+    @param interp_fac factor to inc number of samples by 
+                -1 is default (10x) when too few samples (<=1024)
+                0 is disabled.
+                1 is meaningless (upsample to same number as current). same as 0.
+                10 is default when <=1024 samples
+    NB. main() uses environment variables FWHM_PLOT and FWHM_INTERPFAC to control these
+        but FileCurator does not
     """
     csa = coil.csareader.read(dcm[(0x0029, 0x1110)].value)
 
@@ -64,24 +70,24 @@ def fid_fwhm(dcm, plot=True, interp_fac=1):
 
     # 20260514 - spline interpolate after FFT
     # SVS power spectrum too sparse, FWHM always returns same value
-    # more (interpolated) samples to
+    # upsample (spline interpolated) spectrum to avoid same value for everyone
     # from CHM, matlab like
     #        abs_fftfidint = spline(f,abs(fftfid),[f(1):df/10:f(end)]);
-    # TODO: get actual length
-    if len(absfft) <= 1024 and interp_fac == 1:
+    if len(absfft) <= 1024 and interp_fac == -1:
         logging.warning(
-            (
-                f"FFT has too few elements for FWHM ({len(absfft)}.",
+                f"FFT has too few elements for FWHM ({len(absfft)} <= 1024)." +
                 "Using spline to add samples.",
-            )
         )
         interp_fac = 10
     if interp_fac > 1:
         spline = UnivariateSpline(f, absfft)
-        absfft = spline(np.arange(f[0], f[-1], df / interp_fac))
+        #: WARNING: f' updated to upsampled range for interpolation
+        f = np.arange(f[0], f[-1], df / interp_fac)
+        nt = f.shape[0]  # update for plotting
+        absfft = spline(f)
 
     half_max = np.max(absfft) / 2
-    above_hm = f[absfft - half_max > 0]
+    above_hm = f[(absfft - half_max) > 0]
     fwhm = np.max(above_hm) - np.min(above_hm)
 
     if plot:
@@ -219,12 +225,13 @@ class Curator(FileCurator):
 if __name__ == "__main__":
 
     #: environment variable FWHM_INTERPFAC. not run if 1 (default)
-    INTERP_FAC = int(os.environ.get("FWHM_INTERPFAC", "1"))
+    INTERP_FAC = int(os.environ.get("FWHM_INTERPFAC", "-1"))
+    PLOT = int(os.environ.get("FWHM_PLOT", "1"))
     if len(sys.argv) <= 1:
-        print("ERROR: No input arguments. Proivde a or list of dicom files")
+        print("ERROR: No input arguments. Proivde a or list of dicom files. Use FWHM_INTERPFAC=0 to supprse intropolation. FWHM_PLOT=0 to suppress plot")
         sys.exit(1)
 
     for dcm_file in sys.argv[1:]:
         dcm = pydicom.dcmread(dcm_file)
-        fwhm = fid_fwhm(dcm, interp_fac=INTERP_FAC)
+        fwhm = fid_fwhm(dcm, interp_fac=INTERP_FAC, plot=PLOT != 0)
         print(f"FID FWHM\t{fwhm:2.3f}\t{dcm_file}\n")
