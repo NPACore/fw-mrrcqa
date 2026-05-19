@@ -17,6 +17,10 @@ across Prisma QA projects on flywheel
 20260316WF - ACQ_LABEL=svs_se to update fwhm_svs (instad of fid_qa's fwhm)
 
   FID_MAX_FIN=1 ACQ_LABEL='svs_se_30' uv run ./fw_run.py
+
+20260519WF - add FID_MAX_RUN, SCANNERS, FID_REDO
+
+  FID_MAX_RUN=1 FID_REDO=1 ACQ_LABEL='svs_se_30' SCANNERS=Prisma1QA uv run ./fw_run.py
 """
 
 import os
@@ -29,6 +33,12 @@ import flywheel
 DRYRUN = os.environ.get("DRYRUN")
 MAX_FIN = int(os.environ.get("FID_MAX_FIN", 10)) #: 0 means no max
 QUIET = os.environ.get("QUIET")
+MAX_RUN = int(os.environ.get("FID_MAX_RUN", 0)) #: 0 means no max
+REDO=int(os.environ.get("FID_REDO", 0))
+
+#: probably dont want to use this (yet). Only used in building curator gear info
+#: TODO: add scanner to query as "project.label" if only only 1?
+SCANNERS = os.environ.get("SCANNERS","Prisma1QA,Prisma2QA,Prisma3QA").split(',') #: ["Prisma1QA", "Prisma2QA", "Prisma3QA"]
 
 def verb(msg):
      if QUIET:
@@ -40,7 +50,7 @@ gear = fw.lookup("gears/file-curator")
 gear_name = "file-curator"             # used to check if running
 
 gear_inputs= {}
-for p in ["Prisma1QA", "Prisma2QA", "Prisma3QA"]:
+for p in SCANNERS:
     gear_inputs[p] = {
     "curator":  fw.files.find_one(f"project.label=~{p},name=~fwhm.py"),
     "additional-input-one":  fw.files.find_one(f"project.label=~{p},name=~coil.py")}
@@ -63,18 +73,25 @@ LABEL = os.environ.get("ACQ_LABEL", "qa_fid")
 if re.search('svs',LABEL):
     db_field = 'fwhm_svs'
 
-files = fw.files.find(f'project.label=~Prisma,type=dicom,acquisition.label=~{LABEL},name=~dcm', limit=1e10)
-verb(f"# {datetime.now()} found {len(files)} acq.label ep2d_bold zip files")
+if extralab := os.environ.get("FID_SUB_LAB",""):
+    extralab = f"subject.label={extralab},"
+
+files = fw.files.find(f'project.label=~Prisma,type=dicom,acquisition.label=~{LABEL},{extralab}name=~dcm', limit=1e10)
+verb(f"# {datetime.now()} found {len(files)} acq.label {LABEL} {extralab} zip files")
 i = 0
 already_fin = 0
 for f in reversed(files):
     i += 1
+    if i > MAX_RUN and MAX_RUN > 0:
+        break
 
     acq = fw.get(f.parents['acquisition'])
     ses = fw.get(f.parents['session'])
 
     if re.search('_uc_upw', acq.label):
         verb(f"SKIP: {f.acquisition.label} is un-combined")
+        continue
+
 
     project = fw.get(ses.parents.project).label
 
@@ -88,7 +105,11 @@ for f in reversed(files):
             verb(f"# Seen {MAX_FIN} already complete. Exitting. Continue instead by setting environ: FID_MAX_FIN=0")
             break
 
-        continue
+        if REDO == 0:
+            continue
+        else:
+            verb(f"# FID_REDO {REDO} != 0. redoing")
+
     # can skip if a sufficnetly new gear has been run
     # TODO: use ses objec to find db fwhm
     # try:

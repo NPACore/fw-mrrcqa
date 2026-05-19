@@ -32,7 +32,10 @@ except ImportError:
 # will only be used by file-curator gear
 try:
     import flywheel
-    from flywheel_gear_toolkit.utils.curator import FileCurator
+
+    # 2026-05-19WF - deprecated with move to 1.0.2 (from 0.4.1)
+    # from flywheel_gear_toolkit.utils.curator import FileCurator
+    from fw_curation.curator import FileCurator
 except ImportError:
     flywheel = None
 
@@ -45,7 +48,7 @@ def fid_fwhm(dcm, plot=True, interp_fac=-1):
     """Full Width Half Max of Free Inducation decay
     @param dcm pydicom object
     @param plot show a plot
-    @param interp_fac factor to inc number of samples by 
+    @param interp_fac factor to inc number of samples by
                 -1 is default (10x) when too few samples (<=1024)
                 0 is disabled.
                 1 is meaningless (upsample to same number as current). same as 0.
@@ -75,8 +78,8 @@ def fid_fwhm(dcm, plot=True, interp_fac=-1):
     #        abs_fftfidint = spline(f,abs(fftfid),[f(1):df/10:f(end)]);
     if len(absfft) <= 1024 and interp_fac == -1:
         logging.warning(
-                f"FFT has too few elements for FWHM ({len(absfft)} <= 1024)." +
-                "Using spline to add samples.",
+            f"FFT has too few elements for FWHM ({len(absfft)} <= 1024)."
+            + "Using spline to add samples.",
         )
         interp_fac = 10
     if interp_fac > 1:
@@ -156,7 +159,8 @@ def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
             db_field = "fwhm_svs"
 
         # Check if FWHM already exists
-        if ses.info.get(db_field):
+        # 20260519 - always re-run. unlikely to be asked and not want the update
+        if False and ses.info.get(db_field):
             logging.info(
                 "skipping %s (%s), already have fwhm: %s",
                 acq.label,
@@ -174,6 +178,11 @@ def update_fwhm_stat(acq_id: str, fwhm: float, client=None) -> bool:
     except Exception as e:
         logging.error("Failed to update DB for acquisition %s: %s", acq_id, e)
         return False
+
+
+EXTRA_PACKAGES = ["scipy"]  #: global variable understood by flywheel.
+#: alternative to passing requirements.txt in file-curator dialog
+#: https://gitlab.com/flywheel-io/scientific-solutions/gears/file-curator#requirements
 
 
 class Curator(FileCurator):
@@ -205,7 +214,7 @@ class Curator(FileCurator):
            'base': 'file'}
         """
         # need to upload both coil.py and this file fwhm.py
-        load_coil_module(self.context.get_input_path("additional-input-one"))
+        load_coil_module(self.additional_input_one)
 
         # Handle both zip files and direct DICOM files
         file_path = file_["location"]["path"]
@@ -217,7 +226,7 @@ class Curator(FileCurator):
         print(f"FID FWHM\t{fwhm:2.3f}\t{file_path}")
 
         # Update flywheel database with FWHM value
-        update_fwhm_stat(acq_id, fwhm, self.client)
+        update_fwhm_stat(acq_id, fwhm, self.context.client)
 
         return fwhm
 
@@ -228,7 +237,9 @@ if __name__ == "__main__":
     INTERP_FAC = int(os.environ.get("FWHM_INTERPFAC", "-1"))
     PLOT = int(os.environ.get("FWHM_PLOT", "1"))
     if len(sys.argv) <= 1:
-        print("ERROR: No input arguments. Proivde a or list of dicom files. Use FWHM_INTERPFAC=0 to supprse intropolation. FWHM_PLOT=0 to suppress plot")
+        print(
+            "ERROR: No input arguments. Proivde a or list of dicom files. Use FWHM_INTERPFAC=0 to supprse intropolation. FWHM_PLOT=0 to suppress plot"
+        )
         sys.exit(1)
 
     for dcm_file in sys.argv[1:]:
