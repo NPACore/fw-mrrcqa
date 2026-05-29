@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "matplotlib",
+#     "numpy",
+#     "pydicom",
+#     "scipy",
+# ]
+# ///
 """
 Check Shimming (B0).
 Extract power spectrum's FWHM from FFT on free induction decay.

@@ -27,15 +27,11 @@ def read_item(csa: dict, el: str):
     return valdict["items"][0]
 
 
-def fft_signal(dcm) -> np.ndarray:
-    """
-    extract FFT from FID acquisition in dicom's private CSA header
-    :param dcm: pydicom.pydicom object. [cannot type in signature b/c FW pydicom is old]
-    :return: np.complex128 (2048,)
-    """
-    csa_fft = dcm.get_item((0x7FE1, 0x1010))
+def read_timeseries(dcm: pydicom.pydicom) -> np.ndarray:
+
+    csa_spec = dcm.get_item((0x7FE1, 0x1010))
     # was bytes. uint8 len=16384. should be single w/len 4096
-    raw = np.frombuffer(csa_fft.value, dtype="<f4")
+    raw = np.frombuffer(csa_spec.value, dtype="<f4")
 
     # assert raw.shape[0] == 4096
     # should be 2^x. 4096 for qa_fid; 2048 for SVS
@@ -45,10 +41,11 @@ def fft_signal(dcm) -> np.ndarray:
     cplx = raw[0::2] + 1j * raw[1::2]
 
     ## Siemens CSA (Common Syngo Architecture)
-    # if output wasn't a single vector, shape from CSA header would be needed
-    # all 1 for QA FID acquisition
     # acronym definition from ChatGPT
     # confirmed in https://pmc.ncbi.nlm.nih.gov/articles/PMC5609763/ (2017)
+    # if output wasn't a single vector
+    #   shape from CSA header would be needed
+    # all 1 for QA FID acquisition. confirm that
     csa = csareader.read(dcm[(0x0029, 0x1110)].value)
     shape = [
         read_item(csa, el)
@@ -58,6 +55,16 @@ def fft_signal(dcm) -> np.ndarray:
     # if not single dim, would want to reshape. from matlab:
     # reshape([tmp(1:2:end)+1i*tmp(2:2:end)],ipolDataPointColumns,ipolPhaseColumns,ipolPhaseRows,ipolNumberOfFrames);
 
+    return cplx
+
+
+def fft_signal(dcm) -> np.ndarray:
+    """
+    extract FFT from FID acquisition in dicom's private CSA header
+    :param dcm: pydicom.pydicom object. [cannot type in signature b/c FW pydicom is old]
+    :return: np.complex128 (2048,)
+    """
+    cplx = read_timeseries(dcm)
     fsignal = np.fft.fftshift(np.fft.fft(cplx))
     return fsignal
 
