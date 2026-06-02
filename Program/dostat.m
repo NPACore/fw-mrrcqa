@@ -425,6 +425,12 @@ if ~isempty(getenv('QA_SAVE_IMAGES'))
          'background','totnoisesignal', ...
          'noise', 'noisesignal' ...
         );
+
+   % 20260602 plots. saving for hist but also getting last subplot
+   saveas(gcf,fullfile(outdir,'signals.png'),'png')
+   figure;
+   hist(DATA(MASK==1)); title(sprintf('skew %.3f', stat.skew))
+   saveas(gcf,fullfile(outdir,sprintf('mask_intensity_hist-%.2f.png',stat.skew)),'png')
 else
     fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
 end
