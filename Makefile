@@ -13,6 +13,10 @@ all: .gear-run.txt
 	matlab -r "try, run('mlbin/build_mrc_container.m'), catch e, e, end; quit"
 	docker image ls --format=json fwmrrcqa-mlbase > $@
 
+## 20260826 - matlab version of docker (1.3G) to singularity. TODO: remove flywheel overhead
+mrrcqa.1.5.3.20260303.sif:
+	apptainer build $@ docker-archive:/raidzeus/flywheel/mrrcqa.1.5.3.20260303.tar.bz2
+
 ## Flywheel
 .docker-mlpy: Dockerfile.matlab-python Program/run.py .docker-mlbase matlab-test manifest.json
 	docker build -t $(DOCKER_NAME) -f Dockerfile.matlab-python ./
