@@ -13,6 +13,11 @@ Other QC includes:
     * Works for `qa_fid` (default, adds `fwhm` to session info) and `svs_se_40_wat` via `ACQ_LABEL` (adds `fwhm_svs` to session info). Run by cron. See [`helpers/01_flywheel_hpc_mrrcqa.bash`](helpers/01_flywheel_hpc_mrrcqa.bash).
   * z-shim value alerting is handled by [`shim_notify.py`](https://github.com/NPACore/file-curator/blob/mrrc/examples/shim_notify.py) in the NPAC fork of [`file-curator`](https://github.com/NPACore/file-curator/)'s examples
 
+## Usage at MRRC
+As of 20261008 (no flywheel), `./run-sbatch-raidzeus.bash` is the primary entrypiont.
+It wraps singlurity and slurm. Output is saved to `/raidzeus/derivatives/projs/QC/out/*/stats.json`
+
+
 ## Matlab
 An MRC ("compiled", no license required) container exists (20260221).
 
