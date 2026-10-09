@@ -1,17 +1,28 @@
 .PHONY: all test example
 DOCKER_NAME := $(shell jq -r '.custom."gear-builder".image' manifest.json)
+SIF_NAME := $(notdir $(subst :,-,$(DOCKER_NAME))).sif
 
 # MCC only used by old rule for manually compiled 'mlbin/qastats'
 MCC ?= /opt/ni_tools/MATLAB/R2021a/bin/mcc
 
-all: .gear-run.txt
+all: .singularity
+fw-all: .gear-run.txt # only need python components for flywheel
+
+# octave intead of matlab when no liscence. runs slower.
 .docker-octave: Dockerfile $(wildcard Program/*)
 	docker build -t $(DOCKER_NAME)-octave -f Dockerfile ./
 	date > $@
 
+# requires matlab 2021+ to build
 .docker-mlbase: Program/dostat.m  mlbin/build_mrc_container.m
 	matlab -r "try, run('mlbin/build_mrc_container.m'), catch e, e, end; quit"
 	docker image ls --format=json fwmrrcqa-mlbase > $@
+
+# 20261009 - singularity doesn't have `run.py`. no need for flywheel&python. just matlab
+.singularity: $(SIF_NAME)
+# name is like mrrcqa-ml-1.6.0.20260304.sif
+$(SIF_NAME): .docker-mlbase
+	singularity build $@ docker-daemon://fwmrrcqa-mlbase:latest #$(DOCKER_NAME)
 
 ## 20260826 - matlab version of docker (1.3G) to singularity. TODO: remove flywheel overhead
 mrrcqa.1.5.3.20260303.sif:
