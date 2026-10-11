@@ -1,9 +1,10 @@
 version,
 results = compiler.build.standaloneApplication("../Program/dostat.m");
+[~, qcver] = system('jq -r .custom.\"gear-builder\".image manifest.json'); qcver=strtrim(qcver);
 
 % 20251231, on ML 2024a on oacnucleus.
 % compiler.runtime.createDockerImage(results) 
-compiler.package.docker(results, 'ImageName', 'fwmrrcqa-mlbase')
+compiler.package.docker(results, 'ImageName', 'fwmrrcqa-mlbase', AdditionalInstructions={['ENV MRRCQA_VERSION=' qcver]})
 system('docker image   ls --format=json fwmrrcqa-mlbase|jq -r .Size') % 3.57GB
 
 %{

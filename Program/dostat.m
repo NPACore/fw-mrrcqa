@@ -80,7 +80,9 @@ tlabel = 'C3P3@P3';
 
 %% Loading image data
 % look for IMA, dcm, or MR* files
+fprintf('# [%s] searching %s\n', datestr(now), pfolder)
 D = find_all_dicoms(pfolder);
+fprintf('# [%s] found %d dicoms\n', datestr(now), length(D))
 
 % dicom information
 name = D(1,1).name;
@@ -387,6 +389,9 @@ stat.skew =skewness(masked(masked>0));
 
 stat.calc_dur = toc(calc_start_time);
 
+stat.version = getenv('MRRCQA_VERSION'); % exect to be stored when container is built
+
+fprintf('# [%s] saving to %s\n', datestr(now), outdir)
 %% Saving
 % 20251211 - moved from QC.m to here
 if nargin > 2
@@ -487,4 +492,6 @@ end
   %[v,i] = nanmax(td(:)); [mx,my,mz] = ind2sub(size(MASK), i) % 48,19,45
   % ts=nan(numel(ix), size(DATA,4)); for i=1:numel(ix), ts(i,:)=DATA(ix(i),iy(i),iz(i),:); end
 %}
+
+fprintf('# [%s] finished\n', datestr(now))
 return;
