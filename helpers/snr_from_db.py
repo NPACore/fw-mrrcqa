@@ -9,28 +9,90 @@
 """
 Pull ``snr`` from flywheel session data containers (info.snr).
 Put there by the fw-mrrcqc gear or :py:func:`helpers.dbupdater`
+
+BREAKING CHANGE(2026-10-08): default to fileystem json files instead of FW.
+This addition is excessive. Could just read needed fields within R.
+Python shim here was for flywheel API usage. No longer needed.
+To move to R, would need to reimplment 'shim' split and parsing.
+
+Wiki upload (wiki_upload.py) still easier with python.
+plots.R calls that internally already.
 """
-import flywheel  # pip install flywheel-sdk
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
+import glob
+import re
+import json
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG").upper(),
 format="%(asctime)s:%(levelname)s:%(name)s:%(message)s"
 )
 
-class SNR:
-    def __init__(self):
-        self.fw = flywheel.Client()
-        qc_projects = self.fw.projects.find("label=~Prisma.QA")
+def project_from_fname(f):
+    return os.path.basename(os.path.dirname(f))
 
-        # session only refers to project by id. get label lookup from project list
-        self.p_lookup = {p.id: p.label.replace("QA", "") for p in qc_projects}
-        # ['Prisma1', 'Prisma2', 'Prisma3']
+class Session:
+    """
+    Matching old structure instead of using existing (cleaner) json files.
+    This is crossing the river to get water.
+    Like all_qc_sess and all_shim_and_snr
+    """
+    def __init__(self, stats_fname):
+        """
+        read matlab output json as if it was stored in flywheel DB.
+        """
+        self.project = project_from_fname(stats_fname)
+        with open(stats_fname,'r') as f:
+            stats = json.load(f)
+            self.created = stats.get('date')
+            self.info = {
+                # columns as is. shim&XYZ values split below
+                # which columns to take based on which were saved in flywhell
+                # see ../Program/run.py::info =
+
+                **{k: stats.get(k)
+                   for k in ['skew', 'mean_mask_vol','skew','percent_voxels_max',
+                             'shim', 'XYZ_uTm', 'XYZ2SC_uTm2']},
+                # peak value to non pk name: snrpk, tsnrpk, aliaspk, bkoffpk
+                **{k: stats.get(k+'pk')
+                   for k in ['snr', 'tsnr', 'alias', 'bkoff']},
+            }
+
+class SNR:
+    def __init__(self, globpatt="/raidzeus/derivatives/projs/QC/out/*/stats.json"):
+        """
+        breaking change 2026-10-08: globpatt default.
+        use globpatt=None to revert to flywheel behavior
+        """
+        if globpatt:
+            # project id to
+            self.files = glob.glob(globpatt)
+            # "project id" to scanner. extracing scanner name from folder
+            self.p_lookup = {
+                project_from_fname(x): re.search('Prisma[123]',x).group(0)
+                for x in self.files
+            }
+            self.fw = None
+        else:
+            self.files = None
+            import flywheel  # pip install flywheel-sdk
+            self.fw = flywheel.Client()
+            qc_projects = self.fw.projects.find("label=~Prisma.QA")
+
+            # session only refers to project by id. get label lookup from project list
+            self.p_lookup = {p.id: p.label.replace("QA", "") for p in qc_projects}
+            # ['Prisma1', 'Prisma2', 'Prisma3']
 
     def all_qc_sess(self):
+        if self.files:
+            return [Session(fname) for fname in self.files]
+        else:
+            return all_qc_sess_fw(self)
+
+    def all_qc_sess_fw(self):
         """
         :return:  list of all flywheel PrismaQA sessions
         """
