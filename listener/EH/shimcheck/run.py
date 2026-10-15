@@ -8,7 +8,6 @@ import re
 import sys
 import os
 import subprocess
-import flywheel
 from nibabel.nicom import csareader
 import pydicom
 from glob import glob
@@ -67,7 +66,7 @@ def read_z(dcm) -> float:
     return float(reg.search(asccov).group(1))
 
 
-def update_db(context: flywheel.GearContext, z: float):
+def update_db(context, z: float):
     """
     Flywheel SDK gear style DB update: write snr peak value to sess.info.snr
     Requires write permission when used as a gear rule.
@@ -132,6 +131,7 @@ def main():
         context.config = {"phantom_dicom": input_path, "write_db": False, "key": None, "email_from": "foran@pitt.edu"}
 
     else:
+        import flywheel
         context = flywheel.GearContext()
         input_path = context.get_input("phantom_dicom")["location"]["path"]
 
