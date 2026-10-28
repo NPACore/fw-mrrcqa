@@ -1,0 +1,15 @@
+# Z-shim thresholds, one [[scanner]] per scanner, id = StationName, shortname = name used in logs, threshold = cutoff where everything below fails
+[[scanner]]
+id = "MRC67078"
+shortname = "P1"
+threshold = 9931.513661
+
+[[scanner]]
+id = "AWP167046"
+shortname = "P2"
+threshold = 4505.258657
+
+[[scanner]]
+id = "MRC35073"
+shortname = "P3"
+threshold = 11652.571269
