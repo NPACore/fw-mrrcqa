@@ -1,1 +1,3 @@
 ./config/*.toml
+config/email.toml
+var/
