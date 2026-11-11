@@ -1,7 +1,13 @@
 import os
 import sys
 
-#How to use: python3 run_singularity_func.py container.sif directory dicom_file
+""" Function takes in singularity container, directory where file is, and file. 
+It checks if the container is a .sif and the file path exists. 
+Then it runs the container on the file (via file_path). 
+This function does not check if the file is a dicom.
+
+*How to use: python run_singularity_func.py container.sif directory dicom_file
+"""
 
 def run_singularity(container, dir,  file):
     if not container.endswith("sif"):
