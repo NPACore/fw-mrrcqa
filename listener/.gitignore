@@ -1,3 +1,4 @@
 ./config/*.toml
 config/email.toml
+logs/
 var/
