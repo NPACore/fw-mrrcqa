@@ -7,16 +7,22 @@
 # ]
 # ///
 """
-Pull ``snr`` from flywheel session data containers (info.snr).
-Put there by the fw-mrrcqc gear or :py:func:`helpers.dbupdater`
+Expects to be called by plot.R and paired with wiki_upload.py
+
+Pull ``snr`` from stats.json files (previously using flywheel session data container info.snr).
+Noteably, this provides snr tsnr alias and bkof 'pk' rename and shim values splits
 
 BREAKING CHANGE(2026-10-08): default to fileystem json files instead of FW.
 This addition is excessive. Could just read needed fields within R.
 Python shim here was for flywheel API usage. No longer needed.
-To move to R, would need to reimplment 'shim' split and parsing.
 
-Wiki upload (wiki_upload.py) still easier with python.
+To complete move to R, would need to reimplment 'shim' split and parsing.
+
+However, Wiki upload (wiki_upload.py) still easier with python.
 plots.R calls that internally already.
+
+Flywheel's info.snr initial populated by the fw-mrrcqc gear or :py:func:`helpers.dbupdater`
+As of 2026-10, see ../run-sbatch-raidzeus.bash for filesystem baesd stats.json
 """
 import os
 import pandas as pd
@@ -34,6 +40,19 @@ format="%(asctime)s:%(levelname)s:%(name)s:%(message)s"
 def project_from_fname(f):
     return os.path.basename(os.path.dirname(f))
 
+def dcmtime(hhmmss):
+    """dicom time field to time format
+
+    j.get('dicominfo',{}).get("AcquisitionTime")
+    '063055.317500'
+
+    >>> dcmtime('063055.317500')
+    '06:30:55.317'
+    """
+    if not hhmmss or len(hhmmss) < 11:
+        return "00:00:00.000"
+    return f"{hhmmss[0:2]}:{hhmmss[2:4]}:{hhmmss[4:10]}"
+
 class Session:
     """
     Matching old structure instead of using existing (cleaner) json files.
@@ -47,7 +66,8 @@ class Session:
         self.project = project_from_fname(stats_fname)
         with open(stats_fname,'r') as f:
             stats = json.load(f)
-            self.created = stats.get('date')
+            acq_time = dcmtime(stats.get('dicominfo',{}).get("AcquisitionTime"))
+            self.created = stats.get('date') + " " + acq_time
             self.info = {
                 # columns as is. shim&XYZ values split below
                 # which columns to take based on which were saved in flywhell
@@ -61,7 +81,13 @@ class Session:
                    for k in ['snr', 'tsnr', 'alias', 'bkoff']},
             }
 
+
 class SNR:
+    """
+    Read in signal to noise and other stats (skew, shiim values, etc) as a collection of Session classes
+    Overkill for filesystem-based (2026-10) data. Collection os sessions intially for flywheel (2024 to 2026-08).
+    Note: data is not collected until SNR.all_qc_sess() is run
+    """
     def __init__(self, globpatt="/raidzeus/derivatives/projs/QC/out/*/stats.json"):
         """
         breaking change 2026-10-08: globpatt default.
@@ -121,7 +147,8 @@ class SNR:
         snr = [
             {
                 **s.info, # snr tsnr alias bkoff shim
-                "date": s.created, #s.subject.created, 20250625: see same change in all_snr
+                "date": s.created
+, #s.subject.created, 20250625: see same change in all_snr
                 "scanner": self.p_lookup.get(s.project),
             }
             for s in qc_sess

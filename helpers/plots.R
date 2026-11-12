@@ -95,7 +95,10 @@ long_stats <- function(d){
 
   # had columns for each measure. want row unique to day+scanner+measure
   d_long <- d |>
-      mutate(DATE=lubridate::ymd_hms(DATE)) |>
+      # 20261112 - fw vs fileystem-based stats.json: no acq time only scan date
+      #            updated snr_from_db.py to add date. leaving date only compatiblity here
+      mutate(DATE=ifelse(grepl(' ',DATE), DATE, paste0(DATE, ' 00:00:00.000')),
+             DATE=lubridate::ymd_hms(DATE)) |>
       gather('m','v',-DATE, -scanner) |>
       # also have a bunch of values we can ingore for now
       mutate(mtype=case_when(
