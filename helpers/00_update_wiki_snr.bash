@@ -36,6 +36,7 @@ case "$(uname -a)" in
    #export GIT_SSL_CAINFO="$SSL_CERT_FILE" CURL_CA_BUNDLE="$SSL_CERT_FILE"
    # guix shell ...  nss-certs
 
+   curl https://wiki.mrrc.pitt.edu/clear_qc_cache.php || echo "failed to clean dokuwiki cache. wiki down?"
    guix shell \
      glibc@2.39 r r-ggrepel r-pacman r-reticulate r-dplyr r-tidyr r-ggplot2 r-lubridate r-lubridate r-cowplot r-readxl -- \
      ./plots.R;;

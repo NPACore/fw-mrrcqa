@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-#SBATCH --time=60
+#SBATCH --time=300
 #SBATCH --ntasks 1 --cpus-per-task 2
 #SBATCH --mem=3G
 
 # should take ~150s on cerebro2. BUT
 # Taking 50min on node07 -- slow singularity read? [start 20:50 to 21:36]
+# 20261112 - increated --time=300 [minutes]
+# see:  perl -salne 'BEGIN{print "node\ttime";} @start=@F if m/^start/; if(/^finish/){print "$start[3]\t",($F[2]-$start[2])/60;}'  /raidzeus/derivatives/projs/QC/out/*/slurm.log |  guix shell miller -- mlr --tsv stats1 -g node -f time -a mean,max,count   | column -t
+
 
 # only need 1 cpu. currently povisoning more than needed.
 # expect < 1.5G of memory used. Also doubling
