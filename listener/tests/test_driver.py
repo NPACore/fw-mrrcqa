@@ -39,13 +39,13 @@ def fake_result(ok, z):
 def test_shim_message():
     session = SCAN + "homeless/Brain^Prisma2QC/2026.11.12-06.24.18"
 
-    subject, body = driver.shim_message(fake_result(True, 4527.0), session)
+    subject, body = driver.shim_message(fake_result(True, 4527.0))
     assert subject == "✅ P2 z ShimQA okay"
-    assert body == "P2 ✅: z=4527.00 ≥ 4505.26 – value okay.\nSession: homeless/Brain^Prisma2QC/2026.11.12-06.24.18"
+    assert body == "P2 ✅: z=4527.00 ≥ 4505.26 – value okay."
 
-    subject, body = driver.shim_message(fake_result(False, 4425.0), session)
+    subject, body = driver.shim_message(fake_result(False, 4425.0))
     assert subject == "⛔ P2 z ShimQA BAD"
-    assert body == "P2 ⛔: z=4425.00 < 4505.26 – BAD SHIM\nSession: homeless/Brain^Prisma2QC/2026.11.12-06.24.18"
+    assert body == "P2 ⛔: z=4425.00 < 4505.26 – BAD SHIM"
 
 
 def test_check_shim_logs_pass_and_fail(monkeypatch, caplog):

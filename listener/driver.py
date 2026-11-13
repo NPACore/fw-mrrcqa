@@ -70,10 +70,10 @@ def shim_message(result, session):
     where = os.path.relpath(session, poller.WATCHDIR)
     if result["ok"]:
         subject = f"✅ {scanner} z ShimQA okay"
-        body = f"{scanner} ✅: z={z:.2f} ≥ {threshold:.2f} – value okay.\nSession: {where}"
+        body = f"{scanner} ✅: z={z:.2f} ≥ {threshold:.2f} – value okay."
     else:
         subject = f"⛔ {scanner} z ShimQA BAD"
-        body = f"{scanner} ⛔: z={z:.2f} < {threshold:.2f} – BAD SHIM\nSession: {where}"
+        body = f"{scanner} ⛔: z={z:.2f} < {threshold:.2f} – BAD SHIM"
     return subject, body
 
 
@@ -125,7 +125,7 @@ def handle_series(series_dir, dcm_path, state, now):
         return
 
     if result["threshold"] is not None:
-        subject, body = shim_message(result, session)
+        subject, body = shim_message(result)
         if SEND_EMAIL:
             send_email(subject, body)
             logging.info("email: %s", subject)
