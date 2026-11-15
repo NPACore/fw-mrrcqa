@@ -1,0 +1,133 @@
+function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, afactor, bfig, vidwrite)
+    [nx,ny,nz]=size(volume3d);
+    DATA = volume3d;
+    total_mean = mean(volume3d,'all');
+    DX = []; DY= []; % could set to ishift?
+
+    % nargin < 4
+    if ~exist('bfig','var'), bfig=0; end
+
+    % structuring element for erosion
+    try
+      se = strel('disk', 3);  % mask (values > 1.2 * mean)
+      sec = strel('disk', 7); % centering mask
+    catch
+      % NB. octave does not support MATLABs default n=4 (line structuring elements)
+      % see mask_structuring_elements.m
+      cached_se = fullfile(fileparts(mfilename),'mask_structuring_elements.mat');
+      if ~ exist(cached_se, 'file'), error(cached_se, ' doesnt exist!?'); end
+      load(cached_se, 'sec','se');
+      warning(['using cached se and sec from ', cached_se])
+    end
+
+    % 20261114 - BUG? was not previously tracking per slice position of mask
+    mask3d=zeros(size(DATA));
+    maskalias3d=zeros(size(DATA));;
+
+    for ll=1:nz
+        % data in 4D
+        % setup pre-shift
+        DATA(:,:,ll) = circshift(DATA(:,:,ll),ishift);
+        DATA(:,1,ll) = DATA(:,2,ll);
+        if ll > 1
+            prev_shift = [DX(ll-1) DY(ll-1)];
+            DATA(:,:,ll) = circshift(DATA(:,:,ll),prev_shift);
+        end
+        % dataslice post shift
+        dataslice = DATA(:,:,ll);
+        
+        % mask per slice. per-slice centers DX,DY only calculated on first timepoint
+        tmp = DATA(:,:,ll);
+        %mnval = mean(mean(tmp,1),2); % bad circles
+        mnval = mean(tmp,'all'); % no better
+        % mnval = total_mean; % worse
+        % this was min value per voxel?
+        %mask_thresh(ii,jj,i) = mnval;
+        
+        sdval = std(std(tmp,[],1),[],2); % sd of sd
+        sdval_full = std(tmp(:));
+        mask = zeros(nx,ny);
+        
+        I = find(tmp > afactor*mnval);
+
+        % overloading plotting bool. if plotting also print per slice stats
+        if bfig
+            fprintf('# slice %d: mn/sd=%.2f (%.2f/%.2f) v. factor %.2f; nvox mask=%d\n',...
+              ll, mnval./sdval_full, mnval,sdval_full, afactor, length(I));
+        end
+        
+        
+        mask(I) = 1;
+        mask=imfill(mask, 'holes');
+        %% Fit a circle
+        % TODO
+
+        %% Alias noise mask
+        % split the circle by wrapping around top/bottom
+        maskalias = circshift(mask, [nx/2 0]);
+        % and remove any overlap with existing mask
+        maskalias = maskalias - and(maskalias, mask);
+        % both will be reorded and shifted separetly
+        
+        %%centering
+        cemask = imerode(mask, sec);
+        [I,J] = find(cemask >= 1);
+        
+        mask_nvox = sum(mask,'all');
+         % empty mask -- no data.
+        if isempty(I)
+            fprintf('WARNING @i=%03d, slice=%03d: no values gt 1.2*mean (m=%.2f)\n',...
+                i, ll, mnval);
+            continue
+        end
+
+        % find center
+        I0 = ceil(mean(I));
+        J0 = ceil(mean(J));
+        dx = nx/2+1 - I0;
+        dy = ny/2+1 - J0;
+        DX = [DX dx];
+        DY = [DY dy];
+        
+        emask = imerode(mask, se);
+        emaskalias = imerode(maskalias, se);
+        
+        if 1 % recenter
+            mask = emask;
+            maskalias = emaskalias;
+            
+            % centering
+            DATA(:,:,ll) = circshift(DATA(:,:,ll),[dx dy]);
+            mask = circshift(mask,[dx dy]);
+            maskalias = circshift(maskalias,[dx dy]);
+        end
+        
+        if bfig==1
+            %stitle=['t = ' num2str(i) ' slice = ' num2str(ll) '/' num2str(nz)]
+            stitle=sprintf('slice %02d/%d', ll, nz);
+            vidfig=figure(2);
+            subplot(2,2,1); imagesc(log(DATA(:,:,ll)),[0 10]); axis image; colormap(jet);
+              title(sprintf('mean=% 4.2f sd=% 4.2f', mnval, sdval_full));
+            figure(2); subplot(2,2,2); imagesc(mask); axis image; colormap(jet);
+              title(sprintf('mask nvox=% 5d', mask_nvox));
+            figure(2); subplot(2,2,3); imagesc(maskalias); axis image; colormap(jet);
+              title('alias mask');
+            suptitle(stitle)
+            
+            % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y)
+            try
+                if slice_cnt==1, set(vidfig, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
+            end
+            % 20261114 - recordvideo
+            if exist('vidwrite','var')
+                drawnow;
+                writeVideo(vidwrite, getframe(vidfig));
+            end
+        end % if plot
+
+        mask3d(:,:,ll) = mask;
+        maskalias3d(:,:,ll) = maskalias;
+    end % for ll
+end % function
+% mask_size = sum(mask3d,[1 2]);
+

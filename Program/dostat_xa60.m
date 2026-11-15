@@ -172,8 +172,9 @@ MASK = zeros(nx,ny,nz);
 
 %% Looping files
 %
-cnt = 1;
-icnt = 0;
+vol_cnt = 1;   % increase with each new dicom
+slice_cnt = 0; % increases with each slice (does not reset at new dicom)
+               % used to index DX and DY but only when vol_cnt==1
 t = [];
 DX = [];
 DY = [];
@@ -211,20 +212,21 @@ for i=1:nfile
     else
         DATA(:,:,:,i) = data;
     end
-    % de-mosaic
+
+    % z-axis slice-by-slice
     for ll=1:nz
         % data in 4D
         % setup pre-shift
         DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),ishift);
         DATA(:,1,ll,i) = DATA(:,2,ll,i);
         if ll > 1
-            DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),[DX(icnt) DY(icnt)]);
+            DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),[DX(slice_cnt) DY(slice_cnt)]);
         end
         % dataslice post shift
         dataslice = DATA(:,:,ll,i);
         
-        % mask per slice
-        if cnt==1
+        % mask per slice. per-slice centers DX,DY only calculated on first timepoint
+        if vol_cnt==1
             tmp = DATA(:,:,ll,i);
             mnval = mean(mean(tmp,1),2);
             % this was min value per voxel?
@@ -279,14 +281,6 @@ for i=1:nfile
                 DATA(:,:,ll,i) = circshift(DATA(:,:,ll,i),[dx dy]);
                 mask = circshift(mask,[dx dy]);
                 maskalias = circshift(maskalias,[dx dy]);
-                % noise ROI
-                if 0
-                    if icnt==1
-                        ro_noiseroi = circshift(ro_noiseroi,[dx dy]);
-                        noiseroi = circshift(noiseroi,[dx dy]);
-                        pe_noiseroi = circshift(pe_noiseroi,[dx dy]);
-                    end
-                end
             end
             
             if bfig==1
@@ -305,7 +299,7 @@ for i=1:nfile
                 
                 % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y)
                 try
-                    if icnt==1, set(vidfig, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
+                    if slice_cnt==1, set(vidfig, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
                 end
                 % 20261114 - recordvideo
                 drawnow;
@@ -346,7 +340,7 @@ for i=1:nfile
         
         % collect area stats
         %roi_area(ii, jj, i, :) = [sum(maskphan1), sum(maskbg1), sum(noiseroi1), sum(ro_noiseroi1), sum(pe_noiseroi1)];
-        icnt = icnt+1;
+        slice_cnt = slice_cnt+1; % NOTE: this increases across volumes too!
     end
 
     % Plot dynamic signals
@@ -366,12 +360,13 @@ for i=1:nfile
     figure(3); subplot(5,1,3); plot(aliasnoisesignal(1,1:i*nz)./noisesignal(2,1:i*nz),'b','LineWidth',2); axis tight; ylabel('Aliasing');
     figure(3); subplot(5,1,4); plot(noisesignal(2,1:i*nz),'b','LineWidth',2); axis tight; ylabel('corner noise');
     figure(3); subplot(5,1,5); plot(mask_size(1:i*nz),'b','LineWidth',2); axis tight; ylabel('mask size'); hold on;
-    yyaxis right; hold on; plot(DX(i:i*nz), 'r');plot(DY(i:i*nz), 'g'); ylabel('recenter distance')
+    %yyaxis right; hold on; plot(DX(1:i*nz), 'r');plot(DY(1:i*nz), 'g'); ylabel('recenter distance')
     %figure(3); subplot(6,1,5); plot(ro_noisesignal(2,1:i*nz),'b','LineWidth',2); axis tight; ylabel('ro noise');
     %figure(3); subplot(6,1,6); plot(pe_noisesignal(2,1:i*nz),'b','LineWidth',2); axis tight; ylabel('pe noise');
     end
     
-    t = [t TR*(cnt-1)];
+    t = [t TR*(vol_cnt-1)];
+    vol_cnt = vol_cnt +1;
 end
 
 %% Statistics
