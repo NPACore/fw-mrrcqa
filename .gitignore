@@ -30,3 +30,7 @@ helpers/*pdf
 helpers/WeekStats-FWHM.txt
 mlbin/*/
 *.tar.bz2
+# emacs temp/backup files
+*~
+# singularity containers
+*.sif
