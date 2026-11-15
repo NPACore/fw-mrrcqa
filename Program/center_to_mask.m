@@ -147,8 +147,13 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
             figure(2); subplot(2,2,2); imagesc(mask); axis image; colormap(jet);
               title(sprintf('mask nvox=% 5d', mask_nvox));
             figure(2); subplot(2,2,3); imagesc(maskalias); axis image; colormap(jet);
-              title('alias mask');
-            suptitle(stitle)
+              title(['alias mask ' stitle]);
+            figure(2); subplot(2,2,4); imagesc(2*mask_holey+4*mask); axis image; colormap(jet);
+            title(sprintf('circle fit DX %d DY %d', dx, dy));
+            hold on
+            visboundaries(mask, 'Color','w', 'LineWidth', .5);
+            plot(cx+dx,cy+dy,'g+');%,'MarkerSize',12,'LineWidth',2);
+              %suptitle(stitle)
             
             % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y)
             try
