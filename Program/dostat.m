@@ -172,14 +172,15 @@ for i=1:nfile
     [shimvalues,shimmode, strbuff, GradSensitivity] = readshimvalues(P);
     %disp([num2str(s.InstanceNumber) ': ' num2str(shimvalues)]);
     % image
-    data = dicomread(info); % size(data) == [658 658]
+    data = dicomread(info); % size(data) == [658 658] % prisma
     %figure(1); imagesc(data); axis image; colormap(gray); drawnow;
+    
     % de-mosaic
     icnt = 1;
     for jj=1:my % row
         for ii=1:mx % column
             ll = ii + (jj-1)*mx; % z
-            if ll > nz, break; end
+            if ll > nz, break; end % mosaic not square. no data
 
             ir = (ii-1)*nx+1:ii*nx;
             jr = (jj-1)*ny+1:jj*ny;
