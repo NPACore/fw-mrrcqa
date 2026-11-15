@@ -2,7 +2,7 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
     [nx,ny,nz]=size(volume3d);
     DATA = volume3d;
     total_mean = mean(volume3d,'all');
-    DX = []; DY= []; % could set to ishift?
+    DX = [ishift(1)]; DY= [ishift(2)];
 
     % nargin < 4
     if ~exist('bfig','var'), bfig=0; end
@@ -27,12 +27,10 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
     for ll=1:nz
         % data in 4D
         % setup pre-shift
-        DATA(:,:,ll) = circshift(DATA(:,:,ll),ishift);
+        this_shift = [DX(end) DY(end)];
+        DATA(:,:,ll) = circshift(DATA(:,:,ll),this_shift);
         DATA(:,1,ll) = DATA(:,2,ll);
-        if ll > 1
-            prev_shift = [DX(ll-1) DY(ll-1)];
-            DATA(:,:,ll) = circshift(DATA(:,:,ll),prev_shift);
-        end
+
         % dataslice post shift
         dataslice = DATA(:,:,ll);
         
@@ -51,16 +49,48 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         I = find(tmp > afactor*mnval);
 
         % overloading plotting bool. if plotting also print per slice stats
+        mn_std_rat = mnval ./ sdval_full;
         if bfig
             fprintf('# slice %d: mn/sd=%.2f (%.2f/%.2f) v. factor %.2f; nvox mask=%d\n',...
-              ll, mnval./sdval_full, mnval,sdval_full, afactor, length(I));
+              ll, mn_std_rat, mnval,sdval_full, afactor, length(I));
+        end
+        if mn_std_rat > 1.5 && mnval < 20
+            fprintf('# WARNING: @ slice %d/%d: too much noise (%.2f) with too small mean(%.2f). no data?\n', ...
+                   ll,nz,mn_std_rat, mnval)
+            DX = [DX DX(end)];
+            DY = [DY DX(end)];
+            % mask and maskatlias stay zero for this 'll'
+            continue
         end
         
         
         mask(I) = 1;
         mask=imfill(mask, 'holes');
+
         %% Fit a circle
-        % TODO
+        % Get outer boundary (ignore holes)
+        % n objects-by-1 cell: n boundary pixels-by-(row,col) coord (clockwise)
+        B = bwboundaries(mask, 'noholes');
+        [~,idx] = max(cellfun(@length,B)); % overkill, likely only one object
+        b = B{idx};
+
+        % Fit circle via matrix division
+        x = b(:,2);
+        y = b(:,1);
+        p = [x y ones(size(b,1))] \ -(x.^2 + y.^2);
+
+        % Circle parameters
+        cx = -p(1)/2;
+        cy = -p(2)/2;
+        %r  = sqrt(cx^2 + cy^2 - p(3));
+        r = max(hypot(x-cx, y-cy));
+       
+
+        % Generate filled circle mask
+        [X,Y] = meshgrid(1:size(mask,2), 1:size(mask,1));
+        circleMask = (X-cx).^2 + (Y-cy).^2 <= r^2;
+        mask_holey = mask;
+        mask = circleMask;
 
         %% Alias noise mask
         % split the circle by wrapping around top/bottom
@@ -78,6 +108,9 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         if isempty(I)
             fprintf('WARNING @i=%03d, slice=%03d: no values gt 1.2*mean (m=%.2f)\n',...
                 i, ll, mnval);
+            DX = [DX DX(end)];
+            DY = [DY DX(end)];
+            % mask and maskatlias stay zero for this 'll'
             continue
         end
 
@@ -86,8 +119,9 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         J0 = ceil(mean(J));
         dx = nx/2+1 - I0;
         dy = ny/2+1 - J0;
-        DX = [DX dx];
-        DY = [DY dy];
+        % NOTE: prev DX already applied at start
+        DX = [DX dx+DX(end)];
+        DY = [DY dy+DY(end)];
         
         emask = imerode(mask, se);
         emaskalias = imerode(maskalias, se);
@@ -97,8 +131,10 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
             maskalias = emaskalias;
             
             % centering
+            % NOTE: shift is additional
             DATA(:,:,ll) = circshift(DATA(:,:,ll),[dx dy]);
             mask = circshift(mask,[dx dy]);
+            mask_holey = circshift(mask_holey,[dx dy]);
             maskalias = circshift(maskalias,[dx dy]);
         end
         
@@ -128,6 +164,7 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         mask3d(:,:,ll) = mask;
         maskalias3d(:,:,ll) = maskalias;
     end % for ll
-end % function
+% DX DY 
 % mask_size = sum(mask3d,[1 2]);
+end % function
 
