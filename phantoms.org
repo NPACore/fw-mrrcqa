@@ -1,0 +1,172 @@
+#+TITLE: Phantom QC
+* phantoms
+:PROPERTIES:
+:ORDERED:  t
+:END:
+#+begin_src matlab :results output
+  ex.p1 = '/disk/mace2/scan_data/homeless/Brain^Prisma1QC/2026.11.13-06.23.21/PRISMA1QA20261113/ep2d_bold_p2_s2_5min_658x658.3/MR.1.3.12.2.1107.5.2.43.67078.2026111306244472744101229';
+  ex.pink = '/raidmeduser/OngoingResearch/7TDATA/TerraX/20260908TerraXQC_PinkLabelPhant/DICOM/ep2d_bold_p2_s2_5min_8_MR/1.dcm';
+  ex.braino = '/raidmeduser/OngoingResearch/7TDATA/TerraX/20260908TerraXQC_3TBraino/DICOM/ep2d_bold_p2_s2_5min_3_MR/1.dcm';
+  addpath('Program') % dcmdata
+  for f=fieldnames(ex)'
+    f=f{1};
+    exd.(f) = dcmdata(ex.(f));
+    fprintf("%s\t%d\t%d\t%d\n", f, size(exd.(f)))
+  end
+#+end_src
+
+#+RESULTS:
+: p1	94	94	46
+: pink	128	128	92
+: braino	128	128	92
+
+
+#+begin_src matlab :file ./docs/phantoms.png :results file graphics
+  ph_order = {'p1','pink','braino'};
+  for ph_i = 1:length(ph_order)
+      ph = ph_order{ph_i};
+      data = exd.(ph);
+      subplot(2,3,ph_i)
+      imagesc(sum(data,3))
+      title(ph)
+      axis image
+      subplot(2,3,3+ph_i)
+      hist(double(data(:)));
+  end
+#+end_src
+
+#+RESULTS:
+[[file:./docs/phantoms.png]]
+
+#+begin_src matlab :file ./docs/pink-mask.png :results file graphics
+  ph_order = {'p1','pink'}
+  for ph_i = 1:length(ph_order)
+      data=exd.(ph_order{ph_i});
+      if ph_i == 1; data=circshift(data,[12 0]);
+	  bwidth = 12;
+      else
+	  bwidth=[8 10];
+      end
+      [nx,ny,nz]=size(data);
+      [noiseroi, ro_noiseroi, pe_noiseroi] = make_masks(bwidth, nx, ny);
+      masks = noiseroi + 2^2*ro_noiseroi+2^3*pe_noiseroi;
+      masks(masks==0)=NaN;
+      log_data = log(sum(double(data),3));
+      plt_i = (ph_i-1)*4
+      subplot(2,4,1+plt_i)
+      imagesc(log_data), axis image
+      subplot(2,4,2+plt_i)
+      h=imagesc(masks), axis image
+      set(h, 'AlphaData', ~isnan(masks))
+      subplot(2,4,3+plt_i)
+      hold off
+      imagesc(log_data)
+      hold on;
+      h=image(masks)
+      set(h, 'AlphaData', isnan(masks))
+      axis image
+      subplot(2,4,4+plt_i)
+      hold off
+      imagesc(log_data)
+      hold on;
+      h=image(masks)
+      set(h, 'AlphaData', ~isnan(masks))
+      axis image
+      hold off
+  end
+#+end_src
+
+#+RESULTS:
+[[file:./docs/pink-mask.png]]
+
+* Circle fit
+#+begin_src matlab :results none
+    ph_order = {'p1','pink'}
+    for ph_i = 1:length(ph_order)
+      ph=ph_order{ph_i};
+      if strmatch(ph,'pink'), ishift=[0 0];
+      else                  , ishift=[12 0]; end
+      tic;
+      DATA_IN = dcmdir_4d(fileparts(ex.(ph)));
+      mean3d = mean(DATA_IN,4);
+      [recentered, mask3d, aliasmask, DX, DY] = ...
+	center_to_mask(mean3d, ishift, 1.2, 0);
+      mask_dur_s = toc;
+      ex_full.(ph) = struct('DATA',DATA_IN,...
+			    'mask3d',mask3d, 'aliasmask', aliasmask,...
+			    'recentered', recentered, ...
+                            'DX',DX,'DY',DY, 'dur', mask_dur_s);
+    end
+  #+end_src
+  
+#+begin_src matlab :file ./docs/phantom_masks.png :results file graphics
+  figure(1); clf(1);
+  ph_order = {'p1','pink'}
+  for ph_i = 1:length(ph_order)
+      ph=ph_order{ph_i};
+      rc = ex_full.(ph).recentered;
+      mask3d=ex_full.(ph).mask3d;
+      nvox_mask =squeeze(sum(mask3d,[1 2]));
+      zmeans = squeeze(sum(rc.*mask3d,[1 2])) ./ nvox_mask;
+      subplot(2,3,1 + 3*(ph_i-1))
+      plot(nvox_mask); ylabel('mask size')
+      hold on; yyaxis right;
+      plot(zmeans); hold off; ylabel('mean in mask')
+      title(sprintf('%s',ph))
+      subplot(2,3,2 + 3*(ph_i-1))
+      imagesc(sum(mask3d,3)); title(sprintf('%s mask z-axis sum',ph))
+      subplot(2,3,3 + 3*(ph_i-1));
+      plot([ex_full.(ph).DX',ex_full.(ph).DY']); title(sprintf('%s DX DY',ph))
+  end
+#+end_src
+
+#+RESULTS:
+[[file:./docs/phantom_masks.png]]
+
+* Vectorizing slice-wise stats
+  #+begin_src matlab :results none
+  DATA = ex_full.p1;
+  [nx,ny,nz,nfile] = size(DATA);
+  for tl=1:20
+    tic
+    phansignal = zeros(2,nz,nfile); % 1 - mean; 2 - std
+    for i=1:nfile
+	for ll=1:nz
+	    % testing to confirm get same values
+	    dataslice1 = DATA(:,:,ll,i);
+	    maskphan1 = mask3d(:,:,ll); Iphan1 = maskphan1==1;
+	    phansignal(1,ll,i) = mean(dataslice1(Iphan1)); phansignal(2,ll,i) = std(dataslice1(Iphan1));
+	end
+    end
+    double_loop_time(tl) = toc;
+
+    tic
+    [phan_m, phan_sd] = vec_mu_sigma(DATA,p1_mask3d,[1 2]);
+    vectorized_time(tl) = toc;
+  end
+
+  % ~3-4x faster than double loop
+  vectorized_vs_loop =  median(double_loop_time)/median(vectorized_time)
+  #+end_src
+  
+  #+begin_src matlab :results output
+fprintf('median loop %.02fx slower\n', vectorized_vs_loop)
+
+[phansignal(:,20,14)'; phan_m(20,14), phan_sd(20,14)]
+isna = ~isfinite(squeeze(phansignal(1,:,:)));
+phan_eq = isna | (squeeze(phansignal(1,:,:)) == phan_m);
+fprintf('of %d %d are exact value (or %d na)\n', ...
+    prod(size(phan_m)), length(find(isna)), length(find(phan_eq))
+#+end_src
+
+#+RESULTS:
+: median loop 3.94x slower
+: Index in position 3 exceeds array bounds (must not exceed 5).
+: Matrix dimensions must agree.
+:                                                                                 |
+: Error: Invalid expression. When calling a function or indexing a variable, use parentheses. Otherwise, check for mismatched
+: delimiters.
+
+and confirm values are all the same
+#+begin_src matlab
+#+end_src
