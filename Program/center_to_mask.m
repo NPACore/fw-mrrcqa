@@ -1,4 +1,8 @@
 function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, afactor, bfig, vidwrite)
+    if size(size(volume3d)) ~= 3
+        warning('center_to_mask wants a 3d volume! hoping mean is what you want')
+        volume3d = mean(volume3d,4);
+    end
     [nx,ny,nz]=size(volume3d);
     DATA = volume3d;
     total_mean = mean(volume3d,'all');
@@ -31,9 +35,6 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         DATA(:,:,ll) = circshift(DATA(:,:,ll),this_shift);
         DATA(:,1,ll) = DATA(:,2,ll);
 
-        % dataslice post shift
-        dataslice = DATA(:,:,ll);
-        
         % mask per slice. per-slice centers DX,DY only calculated on first timepoint
         tmp = DATA(:,:,ll);
         %mnval = mean(mean(tmp,1),2); % bad circles
@@ -51,8 +52,8 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         % overloading plotting bool. if plotting also print per slice stats
         mn_std_rat = mnval ./ sdval_full;
         if bfig
-            fprintf('# slice %d: mn/sd=%.2f (%.2f/%.2f) v. factor %.2f; nvox mask=%d\n',...
-              ll, mn_std_rat, mnval,sdval_full, afactor, length(I));
+            fprintf('# slice %d/%d: mn/sd=%.2f (%.2f/%.2f) v. factor %.2f; nvox mask=%d\n',...
+              ll, nz, mn_std_rat, mnval,sdval_full, afactor, length(I));
         end
         if mn_std_rat > 1.5 && mnval < 20
             fprintf('# WARNING: @ slice %d/%d: too much noise (%.2f) with too small mean(%.2f). no data?\n', ...
