@@ -1,4 +1,6 @@
 #+TITLE: Phantom QC
+#+PROPERTY: header-args :exports both
+
 * phantoms
 :PROPERTIES:
 :ORDERED:  t
@@ -21,7 +23,7 @@
 : braino	128	128	92
 
 
-#+begin_src matlab :file ./docs/phantoms.png :results file graphics
+#+begin_src matlab :file ./docs/phantoms.png :results file graphics :exports both
   ph_order = {'p1','pink','braino'};
   for ph_i = 1:length(ph_order)
       ph = ph_order{ph_i};
@@ -38,7 +40,7 @@
 #+RESULTS:
 [[file:./docs/phantoms.png]]
 
-#+begin_src matlab :file ./docs/pink-mask.png :results file graphics
+#+begin_src matlab :file ./docs/pink-mask.png :results file graphics :exports both
   ph_order = {'p1','pink'}
   for ph_i = 1:length(ph_order)
       data=exd.(ph_order{ph_i});
@@ -81,25 +83,30 @@
 
 * Circle fit
 #+begin_src matlab :results none
-    ph_order = {'p1','pink'}
-    for ph_i = 1:length(ph_order)
-      ph=ph_order{ph_i};
-      if strmatch(ph,'pink'), ishift=[0 0];
-      else                  , ishift=[12 0]; end
-      tic;
-      DATA_IN = dcmdir_4d(fileparts(ex.(ph)));
-      mean3d = mean(DATA_IN,4);
-      [recentered, mask3d, aliasmask, DX, DY] = ...
-	center_to_mask(mean3d, ishift, 1.2, 0);
-      mask_dur_s = toc;
-      ex_full.(ph) = struct('DATA',DATA_IN,...
-			    'mask3d',mask3d, 'aliasmask', aliasmask,...
-			    'recentered', recentered, ...
-                            'DX',DX,'DY',DY, 'dur', mask_dur_s);
-    end
+  ph_order = {'p1','pink'}
+  for ph_i = 1:length(ph_order)
+    ph=ph_order{ph_i};
+    if strmatch(ph,'pink'), ishift=[0 0];
+    else                  , ishift=[12 0]; end
+    tic;
+    DATA_IN = dcmdir_4d(fileparts(ex.(ph)));
+    mean3d = mean(DATA_IN,4);
+    [recentered, mask3d, aliasmask, DX, DY] = ...
+      center_to_mask(mean3d, ishift, 1.2, 0);
+    mask_dur_s = toc;
+    data_shift = DATA_IN;
+    for i_t = 1:size(DATA,4); for i_z = 1:size(DATA,3);
+       data_shift(:,:,i_z,i_t) =  circshift(DATA_IN(:,:,i_z,i_t),[DX(i_z) DY(i_z)]);
+    end; end
+    ex_full.(ph) = struct('DATA',DATA_IN,...
+			  'mask3d',mask3d, 'aliasmask', aliasmask,...
+			  'recentered', recentered, ...
+                          'DATADXDY', data_shift, ...
+			  'DX',DX,'DY',DY, 'dur', mask_dur_s);
+  end
   #+end_src
   
-#+begin_src matlab :file ./docs/phantom_masks.png :results file graphics
+#+begin_src matlab :file ./docs/phantom_masks.png :results file graphics :exports both
   figure(1); clf(1);
   ph_order = {'p1','pink'}
   for ph_i = 1:length(ph_order)
@@ -125,48 +132,82 @@
 
 * Vectorizing slice-wise stats
   #+begin_src matlab :results none
-  DATA = ex_full.p1;
-  [nx,ny,nz,nfile] = size(DATA);
-  for tl=1:20
-    tic
-    phansignal = zeros(2,nz,nfile); % 1 - mean; 2 - std
-    for i=1:nfile
-	for ll=1:nz
-	    % testing to confirm get same values
-	    dataslice1 = DATA(:,:,ll,i);
-	    maskphan1 = mask3d(:,:,ll); Iphan1 = maskphan1==1;
-	    phansignal(1,ll,i) = mean(dataslice1(Iphan1)); phansignal(2,ll,i) = std(dataslice1(Iphan1));
-	end
+    ntestiterations = 20;
+    DATA = ex_full.p1.DATA;
+    [nx,ny,nz,nfile] = size(DATA);
+    mask3d = ex_full.p1.mask3d;
+    for tl=1:ntestiterations
+      tic
+      phansignal = zeros(2,nz,nfile); % 1 - mean; 2 - std
+      % original compute method. for each slice of each timepoint
+      for i=1:nfile
+	  for ll=1:nz
+	      % testing to confirm get same values
+	      dataslice1 = DATA(:,:,ll,i);
+	      maskphan1 = mask3d(:,:,ll); Iphan1 = maskphan1==1;
+	      phansignal(1,ll,i) = mean(dataslice1(Iphan1)); phansignal(2,ll,i) = std(dataslice1(Iphan1));
+	  end
+      end
+      double_loop_time(tl) = toc;
+
+      % vectorized with deconstructed mean and std to use mask vox count
+      tic
+      [phan_m, phan_sd] = vec_mu_sigma(DATA,mask3d,[1 2]);
+      vectorized_time(tl) = toc;
     end
-    double_loop_time(tl) = toc;
 
-    tic
-    [phan_m, phan_sd] = vec_mu_sigma(DATA,p1_mask3d,[1 2]);
-    vectorized_time(tl) = toc;
-  end
-
-  % ~3-4x faster than double loop
-  vectorized_vs_loop =  median(double_loop_time)/median(vectorized_time)
+    % ~3-4x faster than double loop
+    vectorized_vs_loop =  median(double_loop_time)/median(vectorized_time)
   #+end_src
   
-  #+begin_src matlab :results output
-fprintf('median loop %.02fx slower\n', vectorized_vs_loop)
-
-[phansignal(:,20,14)'; phan_m(20,14), phan_sd(20,14)]
-isna = ~isfinite(squeeze(phansignal(1,:,:)));
-phan_eq = isna | (squeeze(phansignal(1,:,:)) == phan_m);
-fprintf('of %d %d are exact value (or %d na)\n', ...
-    prod(size(phan_m)), length(find(isna)), length(find(phan_eq))
+  #+begin_src matlab :results output :exports both
+    fprintf('median time(n=%d): loop %.02fx slower then vectorized (%.2fs/%.2fs) for ~10^%.1f total elements (z=%d)\n',...
+     ntestiterations, vectorized_vs_loop, median(double_loop_time),median(vectorized_time), log10(prod(size(DATA))), nz)
+    % [phansignal(:,20,14)'; phan_m(20,14), phan_sd(20,14)]
+    isna = ~isfinite(squeeze(phansignal(2,:,:)));
+    phan_eq = isna | abs((squeeze(phansignal(2,:,:)) - phan_sd) < 10e-5);
+    max_phan_diff = max(abs((squeeze(phansignal(2,:,:)) - phan_sd)),[],'all');
+    fprintf('%d/%d of std stat approx same value [max diff ~10^%.1f] (ignoring %d NaN)\n', ...
+	prod(size(phan_sd)), length(find(phan_eq)), log10(max_phan_diff), length(find(isna)))
 #+end_src
 
 #+RESULTS:
-: median loop 3.94x slower
-: Index in position 3 exceeds array bounds (must not exceed 5).
-: Matrix dimensions must agree.
-:                                                                                 |
-: Error: Invalid expression. When calling a function or indexing a variable, use parentheses. Otherwise, check for mismatched
-: delimiters.
+: median time(n=20): loop 3.66x slower then vectorized (0.10s/0.03s) for ~10^6.8 total elements (z=46)
+: 644/644 of std stat approx same value [max diff ~10^-11.4] (ignoring 0 NaN)
 
-and confirm values are all the same
-#+begin_src matlab
+#+begin_src matlab :file ./docs/phantom_slice_phanval.png :results file graphics :exports both
+  clf(1); f=figure(1); 
+  f.Positoin=[0 0 1500 500];
+  ph_order = {'p1','pink'};
+  nplt = 5
+  mean_rng = [1000 3500]
+  for ph_i = 1:length(ph_order)
+    ph=ph_order{ph_i};
+    [tmpphan_m, tmpphan_sd] = vec_mu_sigma(ex_full.(ph).DATADXDY,ex_full.(ph).mask3d,[1 2]);
+    subplot(2,nplt,1+(ph_i-1)*nplt); imagesc(tmpphan_m, mean_rng); axis tight; ylabel('z'); xlabel('time'); title({'mask mean' '(z ax)'}); colorbar;
+    sdax=subplot(2,nplt,2+(ph_i-1)*nplt); imagesc(tmpphan_sd); axis tight; xlabel('time'); title({'sd' '(z ax)'}); colorbar
+    colormap(sdax,hot);
+    maxsize= size(ex_full.(ph).mask3d,1)*size(ex_full.(ph).mask3d,2);
+    axm=subplot(2,nplt,3+(ph_i-1)*nplt); imagesc(squeeze(sum(ex_full.(ph).mask3d,[1 2])./maxsize), [0 .5]);  title({'mask' 'rat.'}); xticks([]); colorbar
+    colormap(axm,bone);
+
+    xzmean = squeeze(sum(ex_full.(ph).DATADXDY.*ex_full.(ph).mask3d,[1 4])) ./ squeeze(sum(ex_full.(ph).mask3d,1)*size(ex_full.(ph).DATADXDY,4));
+    alpha_mask=double(squeeze(sum(ex_full.(ph).mask3d,2)) ~= 0);
+    xzax = subplot(2,nplt,4+(ph_i-1)*nplt); xzh = imagesc(flipud(rot90(xzmean)), mean_rng); xlabel('y'); title({[ph ' yz masked'] 'x*t mean'}); %colorbar;
+    set(xzh,'AlphaDAta', flipud(rot90(alpha_mask)));
+
+    xymean = squeeze(sum(ex_full.(ph).DATADXDY.*ex_full.(ph).mask3d,[3 4])) ./ (sum(ex_full.(ph).mask3d,3)*size(ex_full.(ph).DATADXDY,4));
+    %xymean = squeeze(mean(ex_full.(ph).DATADXDY.*ex_full.(ph).mask3d,[3 4]));
+    %xymean = squeeze(mean(ex_full.(ph).DATADXDY,[3 4]));
+    xyax = subplot(2,nplt,5+(ph_i-1)*nplt); imh=imagesc(xymean, mean_rng); axis image; axis off;  title({[ph ' xy masked'] 'z*t mean'}); %colorbar;
+    set(imh,'AlphaDAta', double(sum(ex_full.(ph).mask3d,3) ~= 0));
+
+    xadj = .1;
+    axm.Position(3) =axm.Position(3) - xadj;
+    xzax.Position = [xzax.Position(1) - .75*xadj, xzax.Position(2), xzax.Position(3), xzax.Position(4)]
+    xyax.Position = [xyax.Position(1) - 1.75*xadj, xyax.Position(2), xyax.Position(3) + 2*xadj, xyax.Position(4)]
+  end
 #+end_src
+
+#+RESULTS:
+[[file:./docs/phantom_slice_phanval.png]]
