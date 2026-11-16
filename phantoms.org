@@ -24,16 +24,18 @@
 
 
 #+begin_src matlab :file ./docs/phantoms.png :results file graphics :exports both
+  figure(1); clf(1);
   ph_order = {'p1','pink','braino'};
+  drng=[300 2200];
   for ph_i = 1:length(ph_order)
       ph = ph_order{ph_i};
       data = exd.(ph);
-      subplot(2,3,ph_i)
-      imagesc(sum(data,3))
-      title(ph)
-      axis image
-      subplot(2,3,3+ph_i)
-      hist(double(data(:)));
+      si = (ph_i-1);
+      subplot(4,3,si+1); imagesc(squeeze(mean(data,3)),drng); title(ph); axis image; ylabel('x'); xlabel('y')
+      subplot(4,3,si+4); imagesc(squeeze(mean(data,2)),drng); axis image; ylabel('x'); xlabel('z')
+      subplot(4,3,si+7); imagesc(squeeze(mean(data,1)),drng); axis image; ylabel('y'); xlabel('z')
+      subplot(4,3,si+10); hist(double(data(data>drng(1))));
+	 title('all voxel vals>300');ylabel('n');xlabel('vox val') 
   end
 #+end_src
 
@@ -43,7 +45,8 @@
 #+begin_src matlab :file ./docs/pink-mask.png :results file graphics :exports both
   ph_order = {'p1','pink'}
   for ph_i = 1:length(ph_order)
-      data=exd.(ph_order{ph_i});
+      ph=ph_order{ph_i};
+      data=exd.(ph);
       if ph_i == 1; data=circshift(data,[12 0]);
 	  bwidth = 12;
       else
@@ -57,9 +60,13 @@
       plt_i = (ph_i-1)*4
       subplot(2,4,1+plt_i)
       imagesc(log_data), axis image
+      title(['xy log ' ph])
+
       subplot(2,4,2+plt_i)
       h=imagesc(masks), axis image
       set(h, 'AlphaData', ~isnan(masks))
+      title('noise masks')
+
       subplot(2,4,3+plt_i)
       hold off
       imagesc(log_data)
@@ -67,6 +74,8 @@
       h=image(masks)
       set(h, 'AlphaData', isnan(masks))
       axis image
+      title('values in noise masks')
+
       subplot(2,4,4+plt_i)
       hold off
       imagesc(log_data)
@@ -75,6 +84,7 @@
       set(h, 'AlphaData', ~isnan(masks))
       axis image
       hold off
+      title('values out of noise mask')
   end
 #+end_src
 
