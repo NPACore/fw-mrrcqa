@@ -58,6 +58,9 @@ class Session:
     Matching old structure instead of using existing (cleaner) json files.
     This is crossing the river to get water.
     Like all_qc_sess and all_shim_and_snr
+    >>> ses = Session('/raidzeus/derivatives/projs/QC/out/2026.11.17-06.26.26-Prisma2-3/stats.json')
+    >>> ses.info['fwhm']
+    31.6380939524838
     """
     def __init__(self, stats_fname):
         """
@@ -81,6 +84,29 @@ class Session:
                    for k in ['snr', 'tsnr', 'alias', 'bkoff']},
             }
 
+        # 20261117 - also grab fid and svs fwhm
+        fwhm_dbname = {'svs': 'fwhm_svs','fid': 'fwhm'} # names matching old flywheel db names
+        #fwhm_patt = os.path.join(os.path.dirname(stats_fname),os.path.basename'*/fwhm.json')
+        fwhm_patt = re.sub('-\d+/stats.json$','*/fwhm.json', stats_fname)
+        fwhm_json_files = glob.glob(fwhm_patt)
+        if len(fwhm_json_files) > 4:
+            print(f"ERROR: too many {len(fwhm_json_files)} files match {fwhm_patt} for {stats_fname}")
+            return
+        elif len(fwhm_json_files) == 0:
+            # expected for many before 2025-xx? [and fwhm_svs has started even later]
+            # but still enough missing that warnings are too much
+            #if re.search('/20(2[6-9]|3[0-9])',stats_fname):
+            #    print(f"WARNING: no files match {fwhm_patt} for {stats_fname}. expected in 2026+")
+            return
+
+        for fwhmjson in fwhm_json_files:
+            if m := re.search('(svs|fid)',fwhmjson):
+                kname=fwhm_dbname[m.group(1)]
+            else:
+                print("ERROR: bad file. no svs or fid in input {fwhmjson}.")
+                continue
+            with open(fwhmjson, 'r') as f:
+                self.info[kname] = json.load(f).get('fwhm')
 
 class SNR:
     """

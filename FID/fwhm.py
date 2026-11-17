@@ -5,6 +5,7 @@
 #     "matplotlib",
 #     "numpy",
 #     "pydicom",
+#     "nibabel",
 #     "scipy",
 # ]
 # ///
@@ -19,8 +20,12 @@ Can also be used as a file-curator flywheel gear
            But want to run for single voxel spec sequence too ('fwhm_svs')
 20260514 - spline interpolation for SVS. optional env var INTERP_FAC (not flywheel)
            default to genderating FWHM with 10x if too few samples
-"""
+20261117 - CLI for all
+  FWHM_SAVEJSON=1 FWHM_PLOT=0 uv run --script ./fwhm.py  /disk/mace2/scan_data/homeless/Brain^*/20*/*/qa_fid_0x0.*/UNKNOWN.*
+  # saves to /raidzeus/derivatives/projs/QC/out/2026.11.17-06.23.45-Prisma1-fwhm-5/fwhm.json
 
+"""
+FWHM_VER = '1.0.0.20261117'
 import numpy as np
 import pydicom
 import re
@@ -32,10 +37,29 @@ from typing import Any, Dict
 from scipy.interpolate import UnivariateSpline
 
 # Import coil module - try from current directory first, then from additional input
+# 20261117WF: initialy catching expected failure in flywheel's file-curator gear (load later)
+#             now adapted to for running in uv where we can load sister file
+#             NB. for flywheel load_coil_module is run by injected class (`Curator.curate_file`)
+def load_coil_module(coil_path):
+    """Load coil module from additional input when running as gear"""
+    import importlib.util
+
+    global coil
+    # Load coil.py from additional-input-one
+    spec = importlib.util.spec_from_file_location("coil", coil_path)
+    coil = importlib.util.module_from_spec(spec)
+    sys.modules["coil"] = coil
+    spec.loader.exec_module(coil)
+    logging.info(f"Loaded coil module from {coil_path}")
+
+
 try:
     import coil
 except ImportError:
-    coil = None
+    if os.path.isfile(local_py := os.path.join(os.path.dirname(__file__),'coil.py')):
+        load_coil_module(local_py)
+    else:
+        coil = None
 
 # Dont require flywheel. Mock if MIA
 # will only be used by file-curator gear
@@ -115,19 +139,6 @@ def fid_fwhm(dcm, plot=True, interp_fac=-1):
         plt.show()
 
     return fwhm
-
-
-def load_coil_module(coil_path):
-    """Load coil module from additional input when running as gear"""
-    import importlib.util
-
-    global coil
-    # Load coil.py from additional-input-one
-    spec = importlib.util.spec_from_file_location("coil", coil_path)
-    coil = importlib.util.module_from_spec(spec)
-    sys.modules["coil"] = coil
-    spec.loader.exec_module(coil)
-    logging.info(f"Loaded coil module from {coil_path}")
 
 
 def first_dicom_from_zip(zfname: str) -> pydicom.Dataset:
@@ -239,19 +250,86 @@ class Curator(FileCurator):
 
         return fwhm
 
+def save_name_from_dcm(dcmname, basedir='/raidzeus/derivatives/projs/QC/out'):
+    """ Where to save json file. Regexp to extract study date and seqnum.
+    20261117WF: added to replace flywheel curator."""
+    if m:=re.search(r'[^/]+(Prisma[0-9])[^/]*/([0-9.-]+)/.*\.([0-9]+)/', dcmname):
+        study=m.group(1)
+        ymd=m.group(2)
+        seqno=int(m.group(3))
+    # /raidzeus/flywheel-qc-backup/Prisma3QA/Prisma3QA/SUBJECTS/PRISMA3QA20260601/SESSIONS/Brain^Prisma3QA/ACQUISITIONS/svs_se_30_wat/FILES/svs_se_30_wat.dcm
+    elif m:=re.search(r'(Prisma[0-9])QA/.*QA(202[0-9][0-9][0-9][0-9][0-9])/', dcmname):
+        study=m.group(1)
+        ymd=m.group(2)
+        seqno=0;
+        if m:= re.search(r'SESSIONS/[^/]*QA_([0-9]+)/',dcmname):
+            seqno=int(m.group(1))
+        else:
+            seqno=0
+    else:
+        logging.warning("Could not parse dcm name for output filename (bad name '%s')", dcmname)
+        return None
+
+    seqname = 'fwhm'
+    if m := re.search(r'(fid|svs)',dcmname):
+        seqname=m.group(1)
+
+    # TODO: rename study/ymd/seq_seqno/fwhm.json
+    # also rename in ../run-sbatch-raidzeus.bash and listener/
+    return f"{basedir}/{ymd}-{study}-{seqname}_{seqno:02d}/fwhm.json"
 
 if __name__ == "__main__":
 
     #: environment variable FWHM_INTERPFAC. not run if 1 (default)
     INTERP_FAC = int(os.environ.get("FWHM_INTERPFAC", "-1"))
     PLOT = int(os.environ.get("FWHM_PLOT", "1"))
+    SAVE_JSON = os.environ.get('FWHM_SAVEJSON',False)
+
+    # save a few milliseconds by only loading when needed?
+    if SAVE_JSON:
+        import json
+
     if len(sys.argv) <= 1:
         print(
-            "ERROR: No input arguments. Proivde a or list of dicom files. Use FWHM_INTERPFAC=0 to supprse intropolation. FWHM_PLOT=0 to suppress plot"
+            "ERROR: No input arguments.\n"
+            "Proivde a single or list of dicom files.\n"
+            "Use "
+            "\n  FWHM_SAVEJSON=1  save to raidzues"
+            "\n  FWHM_INTERPFAC=0 supprse intropolation"
+            "\n  FWHM_PLOT=0      suppress plot"
         )
         sys.exit(1)
 
     for dcm_file in sys.argv[1:]:
-        dcm = pydicom.dcmread(dcm_file)
-        fwhm = fid_fwhm(dcm, interp_fac=INTERP_FAC, plot=PLOT != 0)
-        print(f"FID FWHM\t{fwhm:2.3f}\t{dcm_file}\n")
+        if not os.path.isfile(dcm_file):
+            logging.warning("Not processing '%s'. Not a file!", dcm_file)
+            continue
+        if SAVE_JSON:
+            outfile= save_name_from_dcm(dcm_file)
+            if outfile and os.path.isfile(outfile):
+                logging.info("Already have %s, skipping %s", outfile, dcm_file)
+                # TODO: check FWHM_VER to see if we should rerun/rewrite
+                # maybe read and print anyway?
+                continue
+        else:
+            outfile = None
+
+        try:
+            #  File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header
+            # force=True =>  Failed to parse (0029,1110)
+            dcm = pydicom.dcmread(dcm_file)
+            fwhm = fid_fwhm(dcm, interp_fac=INTERP_FAC, plot=PLOT != 0)
+        except Exception as e:
+            logging.warning("Failed to parse %s. %s", dcm_file, e)
+            continue
+
+        # show results. either write to a file or to stdout
+        if outfile is not None:
+            outdata={"fwhm": fwhm, 'interp': INTERP_FAC, 'ver': FWHM_VER, 'dcm': dcm_file}
+            if not os.path.isdir(odir:= os.path.dirname(outfile)):
+                os.makedirs(odir)
+            with open(outfile, 'w') as f:
+                json.dump(outdata, f)
+            print(f"FID FWHM\t{fwhm:2.3f}\t{dcm_file}\t{outfile}")
+        else:
+            print(f"FID FWHM\t{fwhm:2.3f}\t{dcm_file}")
