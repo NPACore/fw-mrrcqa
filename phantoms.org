@@ -115,6 +115,11 @@
 			  'DX',DX,'DY',DY, 'dur', mask_dur_s);
   end
   #+end_src
+
+#+begin_src matlab :eval never
+center_to_mask(ex_full.pink.DATA, [0 0], 1.2, 1, 'docs/pink_slices.avi');
+#+end_src
+[[docs/pink_slices.avi]]
   
 #+begin_src matlab :file ./docs/phantom_masks.png :results file graphics :exports both
   figure(1); clf(1);

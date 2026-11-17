@@ -8,8 +8,16 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
     total_mean = mean(volume3d,'all');
     DX = [ishift(1)]; DY= [ishift(2)];
 
-    % nargin < 4
+    % nargin < 4 % create figure
     if ~exist('bfig','var'), bfig=0; end
+    % nargin < 5 % video output file name
+    if ~exist('vidwrite','var'),vidwrite='';end
+    % open vidoe for writing
+    if ~isempty(vidwrite)    
+        vidwrite = VideoWriter(vidwrite); % 'MPEG-4' only for win/macos :(
+        vidwrite.FrameRate = 5;  % frames per second
+        open(vidwrite);
+    end
 
     % structuring element for erosion
     try
@@ -143,25 +151,41 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
             %stitle=['t = ' num2str(i) ' slice = ' num2str(ll) '/' num2str(nz)]
             stitle=sprintf('slice %02d/%d', ll, nz);
             vidfig=figure(2);
-            subplot(2,2,1); imagesc(log(DATA(:,:,ll)),[0 10]); axis image; colormap(jet);
-              title(sprintf('mean=% 4.2f sd=% 4.2f', mnval, sdval_full));
-            figure(2); subplot(2,2,2); imagesc(mask); axis image; colormap(jet);
-              title(sprintf('mask nvox=% 5d', mask_nvox));
-            figure(2); subplot(2,2,3); imagesc(maskalias); axis image; colormap(jet);
-              title(['alias mask ' stitle]);
-            figure(2); subplot(2,2,4); imagesc(2*mask_holey+4*mask); axis image; colormap(jet);
-            title(sprintf('circle fit DX %d DY %d', dx, dy));
+            log_data =log(DATA(:,:,ll));
+            subplot(2,2,1); imagesc(log_data,[0 10]); axis image; colormap(jet);
+              title({stitle, sprintf('mean=% 4.2f sd=% 4.2f', mnval, sdval_full)});
+
+            subplot(2,2,2); imagesc(mask_holey); axis image;axis off; %colormap(jet);
+              title(sprintf('thresh mask nvox=% 5d', sum(mask_holey,'all')));
+
+            subplot(2,2,3); hdmsk=imagesc(log_data,[0,10]); axis image; axis off; colormap(jet);
+            title({sprintf('phan (% 5d)=% 4.f', ...
+                          mask_nvox, ...
+                          sum(DATA(:,:,ll).*mask,'all')/mask_nvox),...
+                   sprintf('alias(% 5d)=% 4.2f', ...
+                          sum(maskalias,'all'), ...
+                          sum(DATA(:,:,ll).*maskalias,'all')/sum(maskalias,'all'))});
+              set(hdmsk,'AlphaData',double((maskalias+mask)>0))
+
+            bothmasks = 2*mask_holey+4*mask;
+            axmask=subplot(2,2,4); hold off;
+            hcmask=imagesc(bothmasks,[2 6]);
+            axis image; xticks([]); yticks([]);
+            colormap(axmask,hsv(4));
+            set(hcmask, 'AlphaData', double(bothmasks>0))
+            title(sprintf('circle fit; DX %d DY %d', dx, dy));
             hold on
-            visboundaries(mask, 'Color','w', 'LineWidth', .5);
+            visboundaries(mask, 'Color','k', 'LineWidth', .5);
             plot(cx+dx,cy+dy,'g+');%,'MarkerSize',12,'LineWidth',2);
+            hold off;
               %suptitle(stitle)
             
             % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y)
             try
-                if slice_cnt==1, set(vidfig, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
+                if ll==1, set(vidfig, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
             end
             % 20261114 - recordvideo
-            if exist('vidwrite','var')
+            if ~isempty(vidwrite)
                 drawnow;
                 writeVideo(vidwrite, getframe(vidfig));
             end

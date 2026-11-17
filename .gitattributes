@@ -3,3 +3,4 @@
 *.nii.gz filter=lfs diff=lfs merge=lfs -text
 *.dcm filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
+docs/pink_slices.avi filter=lfs diff=lfs merge=lfs -text
