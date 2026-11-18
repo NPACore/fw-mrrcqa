@@ -8,6 +8,10 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
     total_mean = mean(volume3d,'all');
     DX = [ishift(1)]; DY= [ishift(2)];
 
+    % default to fitting with circle
+    % set setenv('NO_CIRCLE_FIT','1') to skip
+    do_circle_fit = isempty(getenv('NO_CIRCLE_FIT'));
+
     % nargin < 4 % create figure
     if ~exist('bfig','var'), bfig=0; end
     % nargin < 5 % video output file name
@@ -77,29 +81,33 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         mask=imfill(mask, 'holes');
 
         %% Fit a circle
-        % Get outer boundary (ignore holes)
-        % n objects-by-1 cell: n boundary pixels-by-(row,col) coord (clockwise)
-        B = bwboundaries(mask, 'noholes');
-        [~,idx] = max(cellfun(@length,B)); % overkill, likely only one object
-        b = B{idx};
+        if do_circle_fit % default (20261116) is to do circle fit
+            % Get outer boundary (ignore holes)
+            % n objects-by-1 cell: n boundary pixels-by-(row,col) coord (clockwise)
+            B = bwboundaries(mask, 'noholes');
+            [~,idx] = max(cellfun(@length,B)); % overkill, likely only one object
+            b = B{idx};
 
-        % Fit circle via matrix division
-        x = b(:,2);
-        y = b(:,1);
-        p = [x y ones(size(b,1))] \ -(x.^2 + y.^2);
+            % Fit circle via matrix division
+            x = b(:,2);
+            y = b(:,1);
+            p = [x y ones(size(b,1))] \ -(x.^2 + y.^2);
 
-        % Circle parameters
-        cx = -p(1)/2;
-        cy = -p(2)/2;
-        %r  = sqrt(cx^2 + cy^2 - p(3));
-        r = max(hypot(x-cx, y-cy));
-       
+            % Circle parameters
+            cx = -p(1)/2;
+            cy = -p(2)/2;
+            %r  = sqrt(cx^2 + cy^2 - p(3));
+            r = max(hypot(x-cx, y-cy));
 
-        % Generate filled circle mask
-        [X,Y] = meshgrid(1:size(mask,2), 1:size(mask,1));
-        circleMask = (X-cx).^2 + (Y-cy).^2 <= r^2;
-        mask_holey = mask;
-        mask = circleMask;
+
+            % Generate filled circle mask
+            [X,Y] = meshgrid(1:size(mask,2), 1:size(mask,1));
+            circleMask = (X-cx).^2 + (Y-cy).^2 <= r^2;
+            mask_holey = mask;
+            mask = circleMask;
+        else
+            mask_holey = mask;
+        end
 
         %% Alias noise mask
         % split the circle by wrapping around top/bottom
@@ -148,10 +156,14 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
         end
         
         if bfig==1
+            vidfig=figure(2);
+            % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y) 
+            if ll==1, try, set(vidfig, 'Windowstyle', 'docked'); end; end
+
             %stitle=['t = ' num2str(i) ' slice = ' num2str(ll) '/' num2str(nz)]
             stitle=sprintf('slice %02d/%d', ll, nz);
-            vidfig=figure(2);
             log_data =log(DATA(:,:,ll));
+
             subplot(2,2,1); imagesc(log_data,[0 10]); axis image; colormap(jet);
               title({stitle, sprintf('mean=% 4.2f sd=% 4.2f', mnval, sdval_full)});
 
@@ -167,23 +179,21 @@ function [DATA, mask3d, maskalias3d, DX, DY] = center_to_mask(volume3d, ishift, 
                           sum(DATA(:,:,ll).*maskalias,'all')/sum(maskalias,'all'))});
               set(hdmsk,'AlphaData',double((maskalias+mask)>0))
 
-            bothmasks = 2*mask_holey+4*mask;
-            axmask=subplot(2,2,4); hold off;
-            hcmask=imagesc(bothmasks,[2 6]);
-            axis image; xticks([]); yticks([]);
-            colormap(axmask,hsv(4));
-            set(hcmask, 'AlphaData', double(bothmasks>0))
-            title(sprintf('circle fit; DX %d DY %d', dx, dy));
-            hold on
-            visboundaries(mask, 'Color','k', 'LineWidth', .5);
-            plot(cx+dx,cy+dy,'g+');%,'MarkerSize',12,'LineWidth',2);
-            hold off;
+            if do_circle_fit
+                bothmasks = 2*mask_holey+4*mask;
+                axmask=subplot(2,2,4); hold off;
+                hcmask=imagesc(bothmasks,[2 6]);
+                axis image; xticks([]); yticks([]);
+                colormap(axmask,hsv(4));
+                set(hcmask, 'AlphaData', double(bothmasks>0))
+                title(sprintf('circle fit; DX %d DY %d', dx, dy));
+                hold on
+                visboundaries(mask, 'Color','k', 'LineWidth', .5);
+                plot(cx+dx,cy+dy,'g+');%,'MarkerSize',12,'LineWidth',2);
+                hold off;
+            end
               %suptitle(stitle)
             
-            % will fail if -nodisplay (or DISPLAY empty b/c ssh w/o -X or -Y)
-            try
-                if ll==1, set(vidfig, 'Windowstyle', 'docked'); saveas(gcf,fullfile(outdir,'mask_rois.png'),'png'); end
-            end
             % 20261114 - recordvideo
             if ~isempty(vidwrite)
                 drawnow;

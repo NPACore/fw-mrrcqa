@@ -4,7 +4,7 @@ if nargin == 0
    disp('USAGE: dostats /path/to/dicomdir 0 /path/to/savedir')
    disp('  "0" can be "1" to save a figure and mask information')
    disp('  also see run.py (/flywheel/v0/run.py in container)')
-   disp('  env: MRRCQA_VERSION, QA_SAVE_IMAGES, MAXTIMEPOINTS')
+   disp('  env: MRRCQA_VERSION, MAXTIMEPOINTS, QA_SAVE_IMAGES, NO_CIRCLE_FIT, NO_TERRAX_ZCUT')
    error('bad arguments')
 end
 
@@ -22,7 +22,7 @@ fprintf('# running as %s@%s\n', getenv('USER'), hostname)
 
 % B0 shim value - read once (20261114), should be same for all in series
 P = fullfile(info.files(1).folder, info.files(1).name);
-[dicominfo, err] = dicm_hdr(P);
+[dicominfo, err] = dicm_hdr(P); % additional header parsing, part of json output
 [shimvalues, shimmode, strbuff, GradSensitivity] = readshimvalues(P);
 % B1 shim values. resuse strbuff from shimvalues
 b1vals = readB1values(strbuff);
@@ -52,6 +52,13 @@ if isTerraX
     bwidth = [8 10]; % ro width, pe height
     % intensities are very near center. when low int meants edge, get bad mask
     afactor = 1.2;
+    zcut = 5;
+    % hard code exclusion: don't use the last 3 z slices.
+    % They don't have much of the phantom and masking on phanom is hard (mean no useful, circle fit covers too much)
+    if isempty(getenv('NO_TERRAX_ZCUT')) % default is to cut
+        DATA=DATA(:,:,1:end-zcut,:);
+        nz=size(DATA,3);
+    end
 end
 
 % make a move if we're plotting each frame
@@ -204,7 +211,11 @@ stat.skew =skewness(masked(masked>0));
 
 stat.calc_dur = toc(calc_start_time);
 
-stat.version = getenv('MRRCQA_VERSION'); % exect to be stored when container is built
+stat.version = getenv('MRRCQA_VERSION'); % expect to be stored when container is built
+% behavior flags. expect all to be empty
+stat.NO_TERRAX_ZCUT = getenv('NO_TERRAX_ZCUT'); % did we cut the data?
+stat.NO_CIRCLE_FIT = getenv('NO_CIRCLE_FIT'); % phan mask fit to a circle?
+stat.MAXTIMEPOINTS = getenv('MAXTIMEPOINTS'); % did we chop off time?
 
 
 %% Stats plot
@@ -252,16 +263,18 @@ if ~isempty(getenv('QA_SAVE_IMAGES'))
          ... signals and mean/std calcs
          'snr', 'phansignal', ...
          'tsnr', 'tsnrx','tsnrn', ...
-         'alias',  'aliasnoisesignal',...
-         'background','totnoisesignal', ...
-         'noise', 'noisesignal' ...
+         'background', ...
+         'noise' ...
         );
 
    % 20260602 plots. saving for hist but also getting last subplot
-   saveas(gcf,fullfile(outdir,'signals.png'),'png')
-   figure;
-   hist(DATA(MASK==1)); title(sprintf('skew %.3f', stat.skew))
-   saveas(gcf,fullfile(outdir,sprintf('mask_intensity_hist-%.2f.png',stat.skew)),'png')
+   if bfig==1
+    saveas(figure(3),fullfile(outdir,'signals.png'),'png')
+    saveas(figure(4),fullfile(outdir,'hists.png'),'png')
+    figure;
+    hist(DATA(ALL_MASKS.phan==1)); title(sprintf('skew %.3f', stat.skew))
+    saveas(gcf,fullfile(outdir,sprintf('mask_intensity_hist-%.2f.png',stat.skew)),'png')
+   end
 else
     fprintf('# not saving mask data, set QA_SAVE_IMAGES to save\n')
 end
@@ -271,60 +284,10 @@ fprintf('#  Phantom center shifted (DX) mean=%.1f amax=%.1f sd=%.2f; DY mean=%.1
         mean(DX),std(DX), max(abs(DX)), mean(DY), max(abs(DX)), std(DY));
 fprintf('#  peak of 120-bin hist: snr %.2f tsnr %.2f\n',stat.snrpk,stat.tsnrpk);
 
-%% 2026-03-03 high SNR in later slices?
-%{
-  zs = [12 33 46];
-  for i=1:numel(zs);
-    z=zs(i); subplot(1,4,i);
-    m=squeeze(mean(DATA(:,:,z,:),4)); im=m.*MASK(:,:,z);
-    imshow(m/max(DATA(:)));
-    title(sprintf('z=%d mean=%.3f sd=%.3f', z, mean(im(im~=0)), std(im(im~=0))));
-  end
-  subplot(1,4,4);
-  plot(squeeze(phansignal(2,1:end,:)),'b','LineWidth',2)
-  % line  per time
-  hold on; plot(squeeze(phansignal(2,1:end,1)),'r','LineWidth',2);
-  % just second time point
-  plot(snr(47:46*2),'k');
-  % noise floor
-  plot(noisesignal(2,1:end,1),'y');
-  title('SNR by slice (46), per time (200)')
-  hold off
-%}
-%% tsnr
-%{
-  [ix,iy,iz ] = ind2sub(size(MASK), find(tsnr>600));
-  ux = unique(ix), uy = unique(iy), uz =unique(iz), % uz == 39:46
-
-  td = reshape(tsnr, size(MASK));
-  slice = td(:,:,44);
-  rep_ex = find(slice>50 & slice < 100,1)
-  too_hii = [find(td.*MASK > 300); rep_ex];
-
-  ts=nan(numel(too_hii), size(DATA,4));
-  [xx,yy,zz] = ind2sub(size(MASK), too_hii);
-  for i=1:numel(too_hii)
-     ts(i,:)=DATA(xx(i),yy(i),zz(i),:); 
-  end
-  [v,i] = sort(-1*td(too_hii)); v=-1*v;
-
-  figure
-  subplot(1,3,1); plot(tsnr); title('tsnr all voxels')
-  ax = subplot(1,3,2); imshow(td(:,:,44)/300); title('tsnr at z=44')
-  % zz(i(end)) == 44; v(end) == td(too_hii(i(end))) %  == 319.5
-  subplot(1,3,3);  hold on; title('ts of highest tsnr voxels');
-  plot(1:50,repmat(max(DATA,[],'all'),1,50),'r','LineWidth',2);
-  plot(ts(i([1:5 end]),:)', 'LineWidth',1);  
-  hold(ax,'on')
-  plot(ax, yy(i([1:5 end])), xx(i([1:5 end])),'r.')
-  hold off
-
-  %td(~isfinite(td)) = nan;
-  %[v,i] = nanmax(td(:)); [mx,my,mz] = ind2sub(size(MASK), i) % 48,19,45
-  % ts=nan(numel(ix), size(DATA,4)); for i=1:numel(ix), ts(i,:)=DATA(ix(i),iy(i),iz(i),:); end
-%}
-
 fprintf('# [%s] finished in %.2f\n', datestr(now), stat.calc_dur)
+
+% return data in addition to stats
+% also see setenv('QA_SAVE_IMAGES','1')
 if nargout > 1
    varargout{1} = struct('DATA', DATA,'ALL_MASKS', ALL_MASKS,...
                          'DX', DX, 'DY', DY, ...
