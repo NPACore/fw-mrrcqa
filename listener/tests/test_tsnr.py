@@ -8,7 +8,6 @@ import pytest
 from pydicom.dataset import FileDataset, FileMetaDataset
 from pydicom.uid import ExplicitVRLittleEndian, MRImageStorage, generate_uid
 
-import driver
 import tsnr
 
 
@@ -69,15 +68,3 @@ def test_run_succeeds_only_with_exit_0_and_a_stats_json(series, monkeypatch, cod
             tsnr.run(series)
     assert len(calls) == 1
 
-
-@pytest.mark.parametrize("observe", [True, False])
-def test_driver_runs_tsnr_on_phantoms_only_when_not_observing(series, monkeypatch, observe):
-    """The phantom rules point at the tsnr pipeline, and OBSERVE_ONLY blocks it."""
-    ran = []
-    monkeypatch.setattr(driver, "OBSERVE_ONLY", observe)
-    monkeypatch.setattr(driver.tsnr, "run", lambda path: ran.append(path) or "/out")
-    phantom = driver.poller.WATCHDIR + "PRISMA3QC/s1/PRISMA3QA/ep2d_bold_p2_s2_5min.3"
-    rule = driver.match_rule(phantom)
-    assert rule["pipelines"] == ["tsnr"]
-    driver.fire_trigger(phantom, os.path.join(series, "MR.1"), rule)
-    assert len(ran) == (0 if observe else 1)

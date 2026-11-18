@@ -40,9 +40,9 @@ def make_dicom(station, z=None, phoenix=None):
 def test_load_config():
     """shipped shim.toml gives the three Prismas; get_scanners() is the same thing."""
     scanners = shim.load_config()
-    assert scanners == {"MRC67078": ("P1", 9931.513661),
-                        "AWP167046": ("P2", 4505.258657),
-                        "MRC35073": ("P3", 11652.571269)}
+    assert scanners == {"MRC67078": ("Prisma1", 9931.513661),
+                        "AWP167046": ("Prisma2", 4505.258657),
+                        "MRC35073": ("Prisma3", 11652.571269)}
     assert shim.get_scanners() == scanners
  
  
@@ -60,7 +60,7 @@ def test_read_z():
 def test_check():
     """P1 below its threshold fails, P2 above passes, exactly on it passes, unknown scanner has no verdict."""
     r = shim.check(make_dicom("MRC67078", 9871))
-    assert (r["scanner"], r["z"], r["ok"]) == ("P1", 9871.0, False), r
+    assert (r["scanner"], r["z"], r["ok"]) == ("Prisma1", 9871.0, False), r
     assert shim.check(make_dicom("AWP167046", 4600))["ok"] is True
     assert shim.check(make_dicom("AWP167046", 4505.258657))["ok"] is True
     r = shim.check(make_dicom("SOMETHING_NEW", 18))

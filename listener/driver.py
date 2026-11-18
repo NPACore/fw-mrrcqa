@@ -62,12 +62,11 @@ def check_shim(dcm_path):
     return result
 
 
-def shim_message(result, session):
+def shim_message(result):
     """The subject and body of the email for one shim result."""
     scanner = result["scanner"]
     z = result["z"]
     threshold = result["threshold"]
-    where = os.path.relpath(session, poller.WATCHDIR)
     if result["ok"]:
         subject = f"✅ {scanner} z ShimQA okay"
         body = f"{scanner} ✅: z={z:.2f} ≥ {threshold:.2f} – value okay."
