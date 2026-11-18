@@ -34,10 +34,10 @@ def dry_run():
 
 
 if __name__ == "__main__":
-    dry_run()
-    """"
+    #dry_run()
+
     container = sys.argv[1]
     outdir = sys.argv[2]
     dcmd = sys.argv[3]
     run_singularity(container, outdir, dcmd)
-    """
+
