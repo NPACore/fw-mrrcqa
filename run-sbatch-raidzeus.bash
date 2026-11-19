@@ -26,10 +26,10 @@ export TMPDIR=/tmp
 
 OUTROOT=/raidzeus/derivatives/projs/QC/out/
 IMAGE="/raidzeus/singularity/images/mrrcqa-ml-1.6.1.20261011.sif"
-
+all_input_pattern='/disk/mace2/scan_data/homeless/*Prisma*QC/20*/*/ep2d_*'
 case ${1:--help} in
-  -h*|--h*) echo -e "USAGE: $0 [all|old|/path/to/dir]\nREDO=1 DRYRUN=1 NOSLURM=1 ONLYONE=1";  exit 0;;
-  all) FILES=(/disk/mace2/scan_data/homeless/*Prisma*QC/20*/*/ep2d_*) ;;
+  -h*|--h*) echo -e "USAGE: $0 [all|old|/path/to/dir]\nREDO=1 DRYRUN=1 NOSLURM=1 ONLYONE=1\nAll looks to $all_input_pattern";  exit 0;;
+  all) FILES=($all_input_pattern) ;;
   old) FILES=(/raidzeus/flywheel-qc-backup/Prisma*/Prisma*/SUBJECTS/*/SESSIONS/*/ACQUISITIONS/ep2d_bold_p2_s2_5min/FILES/1.*/);;
   *) FILES=("$@");;
 esac
@@ -52,7 +52,8 @@ for dcmd in "${FILES[@]}"; do
   fi
   desc=${ymd}-${study}-${seqno}
   outdir=$OUTROOT/$desc
-  [[ -r $outdir/stats.json && -z "${REDO:-}" ]] && verb "# have $outdir" && continue
+  outstats=$outdir/stats.json
+  [[ -r $outstats && -z "${REDO:-}" ]] && verb "# skipping $outstats. already have. use REDO=1 to force." && continue
 
   if [ -z "${SLURM_JOB_ID:-}" -a -z "${NOSLURM:-}" ]; then
     # check if we're already running this job. (search *-n*mame in queue. print no *-h*eader
@@ -61,10 +62,14 @@ for dcmd in "${FILES[@]}"; do
     echo "# [$(date)] $outdir"
     log=$outdir/slurm.log
     dryrun mkdir -p $outdir
+    # if not dryrun or dir already exists, error if write permission is missing
+    [ -z "$DRYRUN" -o -e "$outdir" ] && ! test -w $outdir  &&
+	    echo -e "# ERROR: $outdir $USER has no write permissions to $outdir $(stat -c "%u %g %A" $outdir)).Consider:\n#\t chgrp users $outdir" &&
+	    continue
     dryrun sbatch --job-name="$desc" --output="$log" --error="$log" \
 	    "$0" "$dcmd"
   else
-    echo "start $(date +%F-%H:%M\ %s) ${HOSTNAME:-} $dcmdir $SLURM_JOB_ID $SLURM_JOB_NAME"
+    echo "start $(date +%F-%H:%M\ %s) ${USER:-}@${HOSTNAME:-} $dcmdir $SLURM_JOB_ID $SLURM_JOB_NAME"
     # store as array to print to log too
     cmd=(singularity run \
          --mount "type=bind,src=$dcmd,dst=$dcmd,ro"  \
