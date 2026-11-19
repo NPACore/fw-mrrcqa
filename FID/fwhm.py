@@ -24,6 +24,8 @@ Can also be used as a file-curator flywheel gear
   FWHM_SAVEJSON=1 FWHM_PLOT=0 uv run --script ./fwhm.py  /disk/mace2/scan_data/homeless/Brain^*/20*/*/qa_fid_0x0.*/UNKNOWN.*
   # saves to /raidzeus/derivatives/projs/QC/out/2026.11.17-06.23.45-Prisma1-fwhm-5/fwhm.json
 
+20261118 - FWHM_PLOT=2 for many plots. useful for checking outlier
+
 """
 FWHM_VER = '1.0.0.20261117'
 import numpy as np
@@ -77,7 +79,7 @@ except ImportError:
             pass
 
 
-def fid_fwhm(dcm, plot=True, interp_fac=-1):
+def fid_fwhm(dcm, interp_fac=-1):
     """Full Width Half Max of Free Inducation decay
     @param dcm pydicom object
     @param plot show a plot
@@ -88,6 +90,7 @@ def fid_fwhm(dcm, plot=True, interp_fac=-1):
                 10 is default when <=1024 samples
     NB. main() uses environment variables FWHM_PLOT and FWHM_INTERPFAC to control these
         but FileCurator does not
+    @return (fwhm, {'f': spectrum, 'y', halfmax})
     """
     csa = coil.csareader.read(dcm[(0x0029, 0x1110)].value)
 
@@ -126,20 +129,29 @@ def fid_fwhm(dcm, plot=True, interp_fac=-1):
     above_hm = f[(absfft - half_max) > 0]
     fwhm = np.max(above_hm) - np.min(above_hm)
 
-    if plot:
-        dcm_file = (
-            f"{dcm.AcquisitionDate} {dcm.AcquisitionTime} {dcm.SeriesDescription}"
-        )
-        import matplotlib.pyplot as plt
+    return (fwhm, {'f': f, 'bw': bw, 'absfft': absfft, 'half_max': half_max})
 
-        plt.title(f"dt={dt:.6} bw={bw:.2} nt={nt} hm={half_max:3.2};\n{dcm_file}")
-        plt.suptitle(f"fwhm={fwhm}")
-        plt.plot(f, absfft)
-        plt.hlines(y=half_max, xmin=f[0], xmax=f[nt - 1], color="r")
-        plt.show()
+def plot_fwhm(plotdata):
+   import matplotlib.pyplot as plt
 
-    return fwhm
+   for data in plotdata:
+       f=data['f']
+       nt = f.shape[0]
+       # NOTE/TODO: should dt use pre interpolated nt? current count is after potential upsample
+       h, = plt.plot(f, data['absfft'])
+       if len(plotdata)==1:
+           plt.title(f"dt={data['bw']/nt:.6} bw={data['bw']:.2} nt={nt} hm={data['half_max']:3.2};\n{data.get('desc')}")
+           plt.suptitle(f"fwhm={data['fwhm']}")
+       else:
+           h.set_label(f"{data['fwhm']:.2f} {data['desc']}")
 
+       plt.hlines(y=data['half_max'], xmin=f[0], xmax=f[nt - 1], color="r")
+
+   if len(plotdata)>1:
+       plt.suptitle(f"spetrum and FWHM for {len(plotdata)} acqs")
+       plt.legend()
+
+   plt.show()
 
 def first_dicom_from_zip(zfname: str) -> pydicom.Dataset:
     """Dicom header for first file in zip
@@ -242,7 +254,7 @@ class Curator(FileCurator):
         acq_id = file_["hierarchy"]["id"]
 
         # NOTE: will set interp_fac to 10 for SVS automatically
-        fwhm = fid_fwhm(dcm, plot=False)
+        (fwhm, data) = fid_fwhm(dcm)
         print(f"FID FWHM\t{fwhm:2.3f}\t{file_path}")
 
         # Update flywheel database with FWHM value
@@ -297,9 +309,11 @@ if __name__ == "__main__":
             "\n  FWHM_SAVEJSON=1  save to raidzues"
             "\n  FWHM_INTERPFAC=0 supprse intropolation"
             "\n  FWHM_PLOT=0      suppress plot"
+            "\n  FWHM_PLOT=2      plot all inputs on same figure"
         )
         sys.exit(1)
 
+    plotdata=[]
     for dcm_file in sys.argv[1:]:
         if not os.path.isfile(dcm_file):
             logging.warning("Not processing '%s'. Not a file!", dcm_file)
@@ -318,7 +332,7 @@ if __name__ == "__main__":
             #  File is missing DICOM File Meta Information header or the 'DICM' prefix is missing from the header
             # force=True =>  Failed to parse (0029,1110)
             dcm = pydicom.dcmread(dcm_file)
-            fwhm = fid_fwhm(dcm, interp_fac=INTERP_FAC, plot=PLOT != 0)
+            (fwhm,data) = fid_fwhm(dcm, interp_fac=INTERP_FAC)
         except Exception as e:
             logging.warning("Failed to parse %s. %s", dcm_file, e)
             continue
@@ -333,3 +347,15 @@ if __name__ == "__main__":
             print(f"FID FWHM\t{fwhm:2.3f}\t{dcm_file}\t{outfile}")
         else:
             print(f"FID FWHM\t{fwhm:2.3f}\t{dcm_file}")
+
+        if PLOT >= 1:
+            to_plot = {'fwhm': fwhm,
+                       'desc': f"{dcm.AcquisitionDate} {dcm.AcquisitionTime} {dcm.SeriesDescription}",
+                       **data}
+            if PLOT > 1:
+                plotdata.append(to_plot)
+            else:
+                plot_fwhm([to_plot])
+
+    if plotdata:
+        plot_fwhm(plotdata)
