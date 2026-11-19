@@ -87,7 +87,7 @@ class Session:
         # 20261117 - also grab fid and svs fwhm
         fwhm_dbname = {'svs': 'fwhm_svs','fid': 'fwhm'} # names matching old flywheel db names
         #fwhm_patt = os.path.join(os.path.dirname(stats_fname),os.path.basename'*/fwhm.json')
-        fwhm_patt = re.sub('-\d+/stats.json$','*/fwhm.json', stats_fname)
+        fwhm_patt = re.sub(r'-\d+/stats.json$','*/fwhm.json', stats_fname)
         fwhm_json_files = glob.glob(fwhm_patt)
         if len(fwhm_json_files) > 4:
             print(f"ERROR: too many {len(fwhm_json_files)} files match {fwhm_patt} for {stats_fname}")

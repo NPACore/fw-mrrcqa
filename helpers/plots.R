@@ -23,6 +23,7 @@ read_flywheel <- function(){
     #  ImportError: Unable to import required dependencies:
     # do we want to use python output directly?
     #   uv run --script snr_from_db.py --csv /tmp/flywheel_qa_db.csv
+    # Sys.setenv(EXISTING_CSV='/tmp/flywheel_qa_db.csv')
     csv <- Sys.getenv("EXISTING_CSV")
     if(file.exists(csv)){
        return(read.csv(csv) |> select(-matches("X.1")) |> rename(DATE=date))
@@ -53,17 +54,24 @@ read_flywheel <- function(){
 #' @param d dataframe with 'DATE' and 'scanner' columns. likely from read_flywheel()
 #' @return dataframe with new 'Temp' column
 add_temp <- function(d){
+    # expect data from read_flywheel() which should rename date to DATE
+    # but just incase
+    date_col <- 'DATE'
+    if(! date_col %in% names(d)) date_col <- 'date'
+    if(! date_col %in% names(d)) stop('No "DATE" or "date" in add_temp input dataframe.')
+
     tempr <- readxl::read_excel('tempurature_log.xlsx') # DATE `PRISMA 1` `PRISMA 2` PRISMA 3`
+
     tmpr_day <- tempr |>
         rename_with(\(x) gsub('RISMA ','risma',x)) |>
-        mutate(day=gsub(' .*','',DATE)) |>
+        mutate(day=gsub(' .*','',!!date_col)) |>
         # TODO: will want to grab Prisma|7T when terra x comes online?
         select(day, matches('Prisma'))  |>
         pivot_longer(-day, names_to='scanner', values_to='Temp')
         # columns: day, scanner, Temp
 
     d_tmpr <- d |>
-        mutate(day=gsub(' .*','',DATE)) |>
+        mutate(day=gsub(' .*','',!!date_col)) |>
         merge(tmpr_day, by=c('day','scanner'), all.x=T) |>
         select(-day)
 }
@@ -164,6 +172,7 @@ gen_plot <- function(d) {
 #' fetch FW data. uploads row per QA measure csv file to wiki. plots. uploads plot
 #' Use NOUPLOAD=1 to disable uploading (NB unset NOUPLOAD to undo; NOUPLOAD=0 still disables)
 main <- function() {
+   # Sys.setenv(EXISTING_CSV='/tmp/flywheel_qa_db.csv')
    d_fw <- read_flywheel()
    d <- add_temp(d_fw)
    d_stats_wide <- d |> long_stats() |> stats_to_wide()
