@@ -226,3 +226,71 @@ center_to_mask(ex_full.pink.DATA, [0 0], 1.2, 1, 'docs/pink_slices.avi');
 
 #+RESULTS:
 [[file:./docs/phantom_slice_phanval.png]]
+
+
+* Comparing
+#+begin_src maltab :eval never
+setenv('MAXTIMEPOINTS',''); setenv('QA_SAVE_IMAGES','1');
+
+[pink_stats_z3, pz3_data]=dostat_xa60(fileparts(ex.pink),1, 'output/pinkz3');
+
+setenv('NO_TERRAX_ZCUT','1')
+pink_stats=dostat_xa60(fileparts(ex.pink),1, 'output/pink');
+setenv('NO_TERRAX_ZCUT','')
+
+dostat(fileparts(ex.p1),1, 'output/bullet_orig');
+bullet_orig =load('output/bullet_orig/sigstat.mat');
+% MASK always the same!
+% unique(sum(bullet_orig.MASK(:,:,:,1), [1 2])) == 2784
+
+
+setenv('NO_CIRCLE_FIT','1');
+[bullet_xa60_nocirc, bxa60_nocirc_data] = dostat_xa60(fileparts(ex.p1), 1, 'output/bullet_xa60_nocircle');
+setenv('NO_CIRCLE_FIT','');
+
+
+[bulletxa60_stats, bxa60_circ_data] = dostat_xa60(fileparts(ex.p1),1, 'output/bullet_xa60');
+
+find(squeeze(sum(bxa60_nocirc_data.ALL_MASKS.phan,[1 2])) == 2784) % 46
+#+end_src
+
+#+begin_src matlab :results output  :exports both
+  stat_names = {'tsnrpk','snrpk', 'bkoffpk','aliaspk', 'skew'};
+  disp(array2table(cell2mat(cellfun(@(fn)...
+  [bullet_orig.stat.(fn)
+   bullet_xa60_nocirc.(fn)
+   bulletxa60_stats.(fn)
+   pink_stats.(fn)
+   pink_stats_z3.(fn)
+  ],...
+	      stat_names', 'Uni', 0)'),...
+   'VariableName',stat_names, ...
+   'RowNames', {'dostat_org', 'xa60_nocrc','xa60_circl', 'Pink7T','PinkZ87'}))
+#+end_src
+
+#+RESULTS:
+:                   tsnrpk    snrpk     bkoffpk    aliaspk     skew  
+:                   ______    ______    _______    _______    _______
+: 
+:     dostat_org    64.081    223.16    41.854      13.16     0.96066
+:     xa60_nocrc    64.081    226.66    38.973     12.989     0.89333
+:     xa60_circl    64.453    225.27    37.193     13.068     0.88331
+:     Pink7T        209.25    46.678    8.8184     3.5506     0.83168
+:     PinkZ87       209.47    34.198    8.9208     3.5506      0.8739
+
+** Pink aliasing
+
+#+begin_src matlab :file ./docs/pink_alias.png :results file graphics :exports both
+% hot spots at coil?
+% CF. Shiming; distortion correction? aliasiing: larger FOV or oversampling. Pink phantom comosition? 
+  zslice=41; xyslice = squeeze(ex_full.pink.DATADXDY(:,:,zslice,:));
+  subplot(2,2,1); imagesc(mean(xyslice,3) ,[0 4096]); title(sprintf('mean pink example @z=%d',zslice)); colorbar
+  subplot(2,2,2); imagesc(std(xyslice,0,3),[0 250]); title('sd pink example'); colorbar
+
+  zslice=10; xyslice = squeeze(ex_full.pink.DATADXDY(:,:,zslice,:));
+  subplot(2,2,3); imagesc(mean(xyslice,3) ,[0 4096]); title(sprintf('mean pink example @z=%d',zslice)); colorbar
+  subplot(2,2,4); imagesc(std(xyslice,0,3),[0 250] ); title('sd pink example'); colorbar
+#+end_src
+
+#+RESULTS:
+[[file:./docs/pink_alias.png]]
