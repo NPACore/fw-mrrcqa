@@ -1,0 +1,93 @@
+* Full with half max failures
+
+** CLI inspect
+Quick inspect with
+#+begin_src bash :eval never
+datadir=/disk/mace2/scan_data/homeless/Brain^Prisma3QC
+# global environ vars for plotting
+FWHM_INTERPFAC=0 FWHM_PLOT=2 \
+  uv run --script FID/fwhm.py  \
+ `# example "good" sequences for comparison` \
+ $datadir/2026.{11.17-06,10.14-06}*/P*/svs_se_30_wat_0x0.*/UNKNOWN.*   \
+ `# suspect acq to inspect` \
+ $datadir/2026.08.28-*/P*/svs_se_3*/*
+#+end_src
+
+
+** python setup :noexport:
+Using uv to manage depends. set python path to load coil and fwhm
+#+begin_src python :session :python ~/.local/bin/uv run --with scipy,nibabel,pydicom,matplotlib python3 :results none
+import numpy as np
+import nibabel as nb
+import pydicom as pyd
+from matplotlib import pyplot as plt
+from glob import glob
+
+import sys
+sys.path.insert(1, '../../FID')
+import coil, fwhm
+#+end_src
+
+** Load data
+#+begin_src python :session :resutls none
+# read in an example good for comparison and the problematic sequence
+good_ex =pyd.dcmread(glob('/disk/mace2/scan_data/homeless/Brain^Prisma3QC/2026.11.17*/P*/svs*/*')[0])
+bad_fname = '/disk/mace2/scan_data/homeless/Brain^Prisma3QC/2026.08.28-06.28.29/PRISMA3QA20260828/svs_se_30_wat_0x0.6/UNKNOWN.1.3.12.2.1107.5.2.43.167092.2026082806383611493729741'
+dcm = pyd.dcmread(bad_fname)
+
+bad_ts = coil.read_timeseries(dcm)
+(bad_fwhm, bad_data) = fwhm.fid_fwhm(dcm)
+# also load without forcing interoplation.
+(bad_fwhm_nointerp, bad_data_nointerp) = fwhm.fid_fwhm(dcm, interp_fac=0)
+
+good_ts = coil.read_timeseries(good_ex)
+(good_fwhm, good_data) = fwhm.fid_fwhm(good_ex)
+#+end_src
+
+
+#+begin_src python :session :results value :exports both
+[
+ ('','2026-11-17','2026-08-26'),
+ ('fwhm',float(good_fwhm), float(bad_fwhm)),
+ ('bw',good_data['bw'], bad_data['bw']),
+]
+#+end_src
+
+#+RESULTS:
+|      |         2026-11-17 |         2026-08-26 |
+| fwhm |  7.850934425242485 |  602.2955663544235 |
+| bw   | 1199.9040076793856 | 1199.9040076793856 |
+
+** Plot and zoom
+
+FFT interpolation causes exacerbates some oscillation?
+Both a normal "good" ~qa_fid~ from 2026-11-17 and the suspect fa_fid from 2026-08-26 have near identical values at the end of the 1024 measurement array.
+#+begin_src python :session :results graphics file output :file 20260828_fid.png :exports both
+
+
+fig, axes = plt.subplots(2,2)
+def pfft(ax, title='FFT'):
+    ax.set_title(title)
+    ax.plot(good_data['f'], good_data['absfft'], label='11-17 w/ interp')
+    ax.plot(bad_data_nointerp['f'], bad_data_nointerp['absfft'], label='8-28 no interp')
+    ax.plot(bad_data['f'], bad_data['absfft'], 'r.',markersize=1, label='8-28 interp')
+    ax.legend()
+
+def pts(ax, title='TS'):
+    ax.set_title(title)
+    ax.plot(good_ts, '+', markersize=5, label='11-17')
+    ax.plot(bad_ts, 'r.', markersize=1, label='8-28')
+    ax.legend()
+
+pfft(axes[0][0])
+pts(axes[1][0])
+pfft(axes[0][1],'FFT zoom'); axes[0][1].axis([593, 598, -1, 4e6])
+pts(axes[1][1],'TS zoom'); axes[1][1].axis([950, 1024, -900, 6000])
+
+fig.suptitle('qa_fid FFT interpolation error on 2016- 08-26')
+fig.tight_layout()
+#+end_src
+
+#+RESULTS:
+[[file:20260828_fid.png]]
+

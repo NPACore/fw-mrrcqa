@@ -28,7 +28,12 @@ OUTROOT=/raidzeus/derivatives/projs/QC/out/
 IMAGE="/raidzeus/singularity/images/mrrcqa-ml-1.6.1.20261011.sif"
 all_input_pattern='/disk/mace2/scan_data/homeless/*Prisma*QC/20*/*/ep2d_*'
 case ${1:--help} in
-  -h*|--h*) echo -e "USAGE: $0 [all|old|/path/to/dir]\nREDO=1 DRYRUN=1 NOSLURM=1 ONLYONE=1\nAll looks to $all_input_pattern";  exit 0;;
+  -h*|--h*) echo -e "USAGE: $0 [all|old|/path/to/dir]
+REDO=1 DRYRUN=1 NOSLURM=1 ONLYONE=1
+'all' looks to $all_input_pattern
+
+also see cron of npac@cerebro2 for
+   'FWHM_SAVEJSON=1 uv run /raidzeus/src/fw-mrrcqa/FID/fwhm.py /disk/mace2/scan_data/homeless/Brain^Prisma*/20*/*/{qa_fid_0,svs_se_}*/UNKNOWN*'";  exit 0;;
   all) FILES=($all_input_pattern) ;;
   old) FILES=(/raidzeus/flywheel-qc-backup/Prisma*/Prisma*/SUBJECTS/*/SESSIONS/*/ACQUISITIONS/ep2d_bold_p2_s2_5min/FILES/1.*/);;
   *) FILES=("$@");;
